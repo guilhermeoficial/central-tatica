@@ -2035,12 +2035,12 @@ const LS_SYNC_CODE_KEY = 'pcal_sync_code_v1';
 // credenciais que o próprio Firebase te dá (Configurações do projeto > Seus apps > SDK).
 // Enquanto isso não for preenchido, o site funciona normal, só sem sincronizar entre aparelhos.
 let firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBITWOL__EUbJAA3P0-EVPn5XnbY84rgnM",
+  authDomain: "policia-2027.firebaseapp.com",
+  projectId: "policia-2027",
+  storageBucket: "policia-2027.firebasestorage.app",
+  messagingSenderId: "852115277543",
+  appId: "1:852115277543:web:3b557313d3bb8aa8ac8442"
 };
 
 let syncCode = null;
@@ -2112,7 +2112,7 @@ function updateSyncStatusUI(){
   if(!syncStatusEl) return;
   let html;
   if(!firebaseIsConfigured()) html = `☁️ <a href="#" id="syncOpen">Configurar sincronização automática entre aparelhos</a>`;
-  else if(!(syncEnabled && syncCode)) html = `☁️ Firebase configurado · <a href="#" id="syncOpen">ativar sincronização</a>`;
+  else if(!(syncEnabled && syncCode)) html = `☁️ Sincronização pronta · <a href="#" id="syncOpen">ativar neste aparelho</a>`;
   else if(_syncErr) html = `<span style="color:#ff8a80;">☁️ Erro ao sincronizar (${_syncErr})</span> · <a href="#" id="syncOpen">ver ajuda</a>`;
   else html = `☁️ Sincronizado${_syncLast?' às '+new Date(_syncLast).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):''} · <a href="#" id="syncOpen">configurações</a>`;
   syncStatusEl.innerHTML = html;
