@@ -500,7 +500,7 @@ table.cmp td.sub small{ display:block; font-weight:400; color:var(--bone-dim); f
 <div id="concursoInfo"></div>
 <main id="app"></main>
 
-<footer class="foot">☠ Material de estudo independente · progresso salvo via localStorage neste navegador</footer>
+<footer class="foot">☠ Material de estudo independente · progresso salvo neste navegador e, se ativada, na nuvem · <kbd style="border:1px solid #333;border-radius:4px;padding:0 4px">Ctrl K</kbd> busca rápida</footer>
 
 <script>
 
@@ -2430,12 +2430,12 @@ function renderConcursoInfo(){
   const ex = (typeof EXAM_DATES !== 'undefined') ? EXAM_DATES[currentTrack] : null;
   let falta = '';
   if(ex && ex.date){
-    const d = Math.ceil((new Date(ex.date + 'T12:00:00') - new Date()) / 86400000);
+    const d = _daysTo(ex.date);
     falta = d > 0 ? `<span style="background:var(--gold,#c9a227);color:#111;border-radius:10px;padding:2px 9px;font-weight:700;font-size:11px;">faltam ${d} dias</span>` : (d === 0 ? '<span style="background:#e05656;color:#fff;border-radius:10px;padding:2px 9px;font-weight:700;font-size:11px;">É HOJE</span>' : '');
   }
   const linha = (k,v) => `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.45;"><div style="min-width:118px;color:var(--bone-dim);font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;padding-top:2px;">${k}</div><div>${v}</div></div>`;
   let aberto = true;
-  try{ aberto = localStorage.getItem('ct_info_aberto_' + currentTrack) !== '0'; }catch(e){}
+  try{ aberto = localStorage.getItem('ct_info_aberto_' + currentTrack) === '1'; }catch(e){}
   box.innerHTML = `
     <div class="card" style="margin-bottom:12px;">
       <details id="concursoInfoDet" ${aberto ? 'open' : ''}>
@@ -4532,6 +4532,544 @@ document.getElementById('trackSwitcher').addEventListener('click', (e)=>{
 });
 updateTrackUI();
 renderEdital();
+</script>
+<style id="v2css">
+/* ================= CENTRAL TÁTICA v2 · camada visual moderna ================= */
+:root{ --v2-r:14px; --v2-glass:rgba(16,16,19,.62); --v2-stroke:rgba(255,255,255,.075); --v2-stroke-hi:rgba(255,255,255,.14); --v2-ok:#4ade80; --v2-bad:#f87171; }
+html{ scroll-behavior:smooth; }
+body{ -webkit-font-smoothing:antialiased; }
+::selection{ background:var(--gold); color:#0A0A0C; }
+*::-webkit-scrollbar{ width:10px; height:10px; } *::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:10px; border:2px solid transparent; background-clip:padding-box; } *::-webkit-scrollbar-thumb:hover{ background:var(--gold-dim); background-clip:padding-box; }
+
+/* barra de progresso de rolagem */
+#v2Progress{ position:fixed; top:0; left:0; height:2px; width:0; z-index:9999; background:linear-gradient(90deg,var(--gold-dim),var(--gold),var(--gold-bright)); box-shadow:0 0 12px var(--gold); transition:width .1s linear; }
+
+/* ---------- vidro em cards ---------- */
+.card, .subject-card{ background:var(--v2-glass) !important; backdrop-filter:blur(16px) saturate(1.25); -webkit-backdrop-filter:blur(16px) saturate(1.25); border:1px solid var(--v2-stroke) !important; border-radius:var(--v2-r) !important; box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 20px 50px -20px rgba(0,0,0,.8) !important; transition:transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s; }
+.card::before{ height:2px !important; opacity:.9; background:linear-gradient(90deg, transparent, var(--gold), transparent) !important; }
+.card:hover, .subject-card:hover{ border-color:var(--v2-stroke-hi) !important; }
+.subject-card:hover{ transform:translateY(-2px); }
+/* holofote que segue o mouse */
+.v2-spot{ position:relative; }
+.v2-spot::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:0; transition:opacity .3s; background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%), color-mix(in srgb, var(--gold) 13%, transparent), transparent 60%); }
+.v2-spot:hover::after{ opacity:1; }
+.stat-box{ border-radius:10px !important; background:rgba(255,255,255,.025) !important; border:1px solid var(--v2-stroke) !important; transition:transform .2s, border-color .2s; }
+.stat-box:hover{ transform:translateY(-2px); border-color:color-mix(in srgb, var(--gold) 45%, transparent) !important; }
+.progress-track{ border-radius:99px !important; border:0 !important; background:rgba(255,255,255,.06) !important; height:7px !important; }
+.progress-fill, .bb-fill{ border-radius:99px; position:relative; overflow:hidden; transition:width 1s cubic-bezier(.2,.8,.2,1); }
+.progress-fill::after, .bb-fill::after{ content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent); transform:translateX(-100%); animation:v2shim 2.6s ease-in-out infinite; }
+@keyframes v2shim{ to{ transform:translateX(100%); } }
+
+/* ---------- botões ---------- */
+.btn{ border-radius:10px !important; transition:transform .15s, background .2s, box-shadow .2s, color .2s !important; position:relative; overflow:hidden; }
+.btn:active{ transform:scale(.97); }
+.btn.primary{ box-shadow:0 8px 24px -10px var(--gold); }
+.btn.primary:hover{ box-shadow:0 10px 30px -8px var(--gold); }
+.v2-ripple{ position:absolute; border-radius:50%; transform:scale(0); background:rgba(255,255,255,.35); animation:v2rip .6s ease-out; pointer-events:none; }
+@keyframes v2rip{ to{ transform:scale(3.2); opacity:0; } }
+
+/* ---------- abas ---------- */
+#tabsNav{ background:rgba(6,6,8,.72) !important; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--v2-stroke) !important; gap:4px !important; padding:8px !important; }
+#tabsNav button{ border:1px solid transparent !important; border-radius:99px !important; padding:8px 14px !important; transition:all .2s !important; }
+#tabsNav button:hover{ background:rgba(255,255,255,.05) !important; color:var(--bone) !important; }
+#tabsNav button.active{ background:var(--gold) !important; color:#0A0A0C !important; box-shadow:0 0 0 1px var(--gold), 0 6px 22px -6px var(--gold) !important; }
+#tabsNav button[data-tab="painel"]{ font-weight:800; }
+@media (max-width:640px){ #tabsNav{ flex-wrap:nowrap !important; justify-content:flex-start !important; overflow-x:auto; scrollbar-width:none; } #tabsNav::-webkit-scrollbar{ display:none; } #tabsNav button{ flex:0 0 auto; padding:7px 12px !important; } }
+
+/* ---------- ferramentas na barra do topo ---------- */
+.v2-tools{ margin-left:auto; display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.v2-chip{ display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 10px; border-radius:99px; border:1px solid var(--v2-stroke); background:rgba(255,255,255,.035); color:var(--bone-soft); font:600 11.5px 'Inter',sans-serif; cursor:pointer; white-space:nowrap; transition:all .2s; }
+.v2-chip:hover{ border-color:var(--gold-dim); color:var(--bone); }
+.v2-chip kbd{ font:600 10px 'IBM Plex Mono',monospace; padding:1px 5px; border-radius:5px; border:1px solid var(--v2-stroke-hi); color:var(--bone-dim); }
+.v2-dot{ width:8px; height:8px; border-radius:50%; background:#666; box-shadow:0 0 0 3px rgba(255,255,255,.05); }
+.v2-dot.ok{ background:var(--v2-ok); box-shadow:0 0 10px var(--v2-ok); } .v2-dot.err{ background:var(--v2-bad); box-shadow:0 0 10px var(--v2-bad); animation:v2pulse 1.4s infinite; } .v2-dot.off{ background:#e0a050; }
+@keyframes v2pulse{ 50%{ opacity:.35; } }
+@media (max-width:640px){ .v2-chip .v2-lbl, .v2-chip kbd{ display:none; } .v2-chip{ padding:0 9px; } }
+
+/* ---------- painéis secundários (datas, backup, sync) ---------- */
+#examDatesPanel, #backupBar, #syncStatus{ max-width:1100px !important; border-radius:12px !important; background:var(--v2-glass) !important; backdrop-filter:blur(12px); border:1px solid var(--v2-stroke) !important; }
+#syncStatus{ background:transparent !important; border:0 !important; backdrop-filter:none; }
+body.v2-wide main#app{ max-width:1180px; }
+#concursoInfo{ max-width:1180px; margin:0 auto; padding:14px 16px 0; box-sizing:border-box; }
+#concursoInfo .card{ margin-bottom:0 !important; }
+main#app{ transition:max-width .3s; }
+
+/* ---------- transições de tela ---------- */
+.v2-enter{ animation:v2in .38s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes v2in{ from{ opacity:0; transform:translateY(10px); filter:blur(3px); } to{ opacity:1; transform:none; filter:none; } }
+.v2-rv{ opacity:0; transform:translateY(16px); transition:opacity .55s cubic-bezier(.2,.8,.2,1), transform .55s cubic-bezier(.2,.8,.2,1); }
+.v2-rv.in{ opacity:1; transform:none; }
+
+/* ---------- feedback de resposta ---------- */
+.v2-hit{ animation:v2hit .55s ease-out; }
+@keyframes v2hit{ 0%{ box-shadow:0 0 0 0 color-mix(in srgb,var(--v2-ok) 70%,transparent); } 100%{ box-shadow:0 0 0 22px transparent; } }
+.v2-miss{ animation:v2shake .42s cubic-bezier(.36,.07,.19,.97); }
+@keyframes v2shake{ 10%,90%{ transform:translateX(-2px);} 20%,80%{ transform:translateX(4px);} 30%,50%,70%{ transform:translateX(-7px);} 40%,60%{ transform:translateX(7px);} }
+.btn-answer{ transition:transform .15s, box-shadow .2s, border-color .2s, background .2s !important; }
+.btn-answer:not([disabled]):hover{ transform:translateX(3px); }
+.mc-letter{ transition:all .2s; }
+.v2-kbdhint{ text-align:center; font:500 10.5px 'IBM Plex Mono',monospace; color:var(--bone-dim); margin:10px 0 0; opacity:.75; }
+.v2-kbdhint kbd{ border:1px solid var(--v2-stroke-hi); border-radius:4px; padding:0 4px; margin:0 1px; }
+@media (hover:none){ .v2-kbdhint{ display:none; } }
+
+/* ================= PAINEL DE COMANDO ================= */
+.pn{ display:grid; gap:16px; }
+.pn-top{ display:grid; grid-template-columns:1.35fr 1fr; gap:16px; }
+.pn-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.pn-two{ display:grid; grid-template-columns:1.2fr 1fr; gap:16px; }
+@media (max-width:900px){ .pn-top, .pn-two{ grid-template-columns:1fr; } .pn-row{ grid-template-columns:repeat(2,1fr); } }
+.pn-card{ position:relative; border-radius:18px; padding:20px; background:var(--v2-glass); backdrop-filter:blur(18px) saturate(1.3); -webkit-backdrop-filter:blur(18px) saturate(1.3); border:1px solid var(--v2-stroke); box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 30px 60px -30px rgba(0,0,0,.9); overflow:hidden; }
+.pn-card::before{ content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px; background:linear-gradient(140deg, color-mix(in srgb,var(--gold) 55%,transparent), transparent 35%, transparent 70%, color-mix(in srgb,var(--gold) 25%,transparent)); -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
+.pn-h{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 14px; }
+.pn-h h3{ margin:0; font:800 12px 'Inter',sans-serif; letter-spacing:.16em; text-transform:uppercase; color:var(--bone-soft); display:flex; align-items:center; gap:8px; }
+.pn-h h3 i{ font-style:normal; width:24px; height:24px; display:grid; place-items:center; border-radius:8px; background:color-mix(in srgb,var(--gold) 16%,transparent); color:var(--gold-bright); font-size:13px; }
+.pn-sub{ font:500 11px 'IBM Plex Mono',monospace; color:var(--bone-dim); }
+
+/* contagem regressiva */
+.pn-count{ min-height:210px; display:flex; flex-direction:column; justify-content:space-between; background:
+  radial-gradient(600px 300px at 0% 0%, color-mix(in srgb,var(--gold) 22%,transparent), transparent 60%),
+  linear-gradient(180deg, rgba(10,10,12,.55), rgba(10,10,12,.85)), var(--v2-hero, none) center/cover; }
+.pn-count .lbl{ font:700 11px 'IBM Plex Mono',monospace; letter-spacing:.2em; text-transform:uppercase; color:var(--gold-bright); }
+.pn-count .ttl{ font:800 clamp(20px,2.4vw,28px)/1.1 'Inter',sans-serif; color:#fff; margin:6px 0 0; letter-spacing:-.01em; }
+.pn-clock{ display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+.pn-clock .u{ min-width:74px; padding:10px 12px 8px; border-radius:12px; background:rgba(0,0,0,.45); border:1px solid var(--v2-stroke); text-align:center; }
+.pn-clock .n{ font:800 clamp(28px,4vw,44px)/1 'Inter',sans-serif; color:#fff; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.pn-clock .u:first-child .n{ color:var(--gold-bright); text-shadow:0 0 24px color-mix(in srgb,var(--gold) 60%,transparent); }
+.pn-clock .k{ font:600 9.5px 'IBM Plex Mono',monospace; letter-spacing:.18em; color:var(--bone-dim); margin-top:6px; text-transform:uppercase; }
+.pn-urgent{ display:inline-block; margin-top:12px; font:700 11px 'Inter',sans-serif; letter-spacing:.06em; padding:5px 10px; border-radius:99px; background:color-mix(in srgb,var(--v2-bad) 18%,transparent); color:#fecaca; border:1px solid color-mix(in srgb,var(--v2-bad) 45%,transparent); }
+
+/* meta diária (anel) */
+.pn-goal{ display:flex; align-items:center; gap:20px; }
+.pn-ring{ position:relative; width:150px; height:150px; flex:0 0 auto; }
+.pn-ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
+.pn-ring .bg{ stroke:rgba(255,255,255,.07); }
+.pn-ring .fg{ stroke:url(#v2grad); stroke-linecap:round; transition:stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1); filter:drop-shadow(0 0 8px color-mix(in srgb,var(--gold) 60%,transparent)); }
+.pn-ring .c{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; }
+.pn-ring .c b{ display:block; font:800 34px/1 'Inter',sans-serif; color:#fff; }
+.pn-ring .c span{ font:600 10px 'IBM Plex Mono',monospace; letter-spacing:.14em; color:var(--bone-dim); text-transform:uppercase; }
+.pn-goal-side p{ margin:0 0 10px; color:var(--bone-soft); font-size:13.5px; line-height:1.5; }
+.pn-seg{ display:inline-flex; border:1px solid var(--v2-stroke); border-radius:99px; padding:3px; gap:2px; background:rgba(0,0,0,.3); }
+.pn-seg button{ border:0; background:transparent; color:var(--bone-dim); font:700 11px 'IBM Plex Mono',monospace; padding:5px 10px; border-radius:99px; cursor:pointer; }
+.pn-seg button.sel{ background:var(--gold); color:#0A0A0C; }
+
+/* KPIs */
+.pn-kpi{ padding:16px 18px; }
+.pn-kpi .k{ font:700 10px 'IBM Plex Mono',monospace; letter-spacing:.16em; text-transform:uppercase; color:var(--bone-dim); display:flex; justify-content:space-between; }
+.pn-kpi .v{ font:800 clamp(26px,3vw,36px)/1.05 'Inter',sans-serif; color:#fff; margin-top:10px; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.pn-kpi .v small{ font-size:13px; color:var(--bone-dim); font-weight:600; margin-left:3px; letter-spacing:0; }
+.pn-kpi .d{ font:500 11px 'IBM Plex Mono',monospace; color:var(--bone-dim); margin-top:6px; }
+.pn-kpi .d.up{ color:var(--v2-ok); } .pn-kpi .d.down{ color:var(--v2-bad); }
+.pn-kpi .bar{ height:4px; border-radius:99px; background:rgba(255,255,255,.06); margin-top:12px; overflow:hidden; }
+.pn-kpi .bar i{ display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,var(--gold-dim),var(--gold-bright)); transition:width 1.2s cubic-bezier(.2,.8,.2,1); }
+
+/* missões */
+.pn-mis{ display:grid; gap:10px; }
+.pn-m{ display:flex; align-items:center; gap:14px; padding:13px 14px; border-radius:13px; background:rgba(255,255,255,.03); border:1px solid var(--v2-stroke); cursor:pointer; transition:all .2s; text-align:left; width:100%; color:inherit; font:inherit; }
+.pn-m:hover{ border-color:color-mix(in srgb,var(--gold) 50%,transparent); background:color-mix(in srgb,var(--gold) 7%,transparent); transform:translateX(4px); }
+.pn-m .ic{ width:40px; height:40px; border-radius:11px; display:grid; place-items:center; font-size:19px; flex:0 0 auto; background:color-mix(in srgb,var(--gold) 14%,transparent); }
+.pn-m .tx{ flex:1; min-width:0; } .pn-m .tx b{ display:block; color:var(--bone); font:700 14px 'Inter',sans-serif; } .pn-m .tx span{ display:block; color:var(--bone-dim); font-size:12px; margin-top:2px; }
+.pn-m .go{ color:var(--gold-bright); font-size:18px; transition:transform .2s; } .pn-m:hover .go{ transform:translateX(4px); }
+
+/* heatmap */
+.pn-heat{ display:grid; grid-auto-flow:column; grid-template-rows:repeat(7,1fr); gap:3px; overflow-x:auto; padding-bottom:4px; }
+.pn-heat i{ width:13px; height:13px; border-radius:3px; background:rgba(255,255,255,.05); display:block; transition:transform .15s; }
+.pn-heat i:hover{ transform:scale(1.5); outline:1px solid #fff; }
+.pn-heat i.l1{ background:color-mix(in srgb,var(--gold) 28%,transparent); } .pn-heat i.l2{ background:color-mix(in srgb,var(--gold) 50%,transparent); } .pn-heat i.l3{ background:color-mix(in srgb,var(--gold) 75%,transparent); } .pn-heat i.l4{ background:var(--gold-bright); box-shadow:0 0 8px color-mix(in srgb,var(--gold) 70%,transparent); }
+.pn-heat i.fut{ visibility:hidden; }
+.pn-leg{ display:flex; align-items:center; gap:4px; justify-content:flex-end; font:500 10px 'IBM Plex Mono',monospace; color:var(--bone-dim); margin-top:8px; } .pn-leg i{ width:10px; height:10px; border-radius:2px; display:inline-block; }
+
+/* barras por matéria */
+.pn-subj{ display:grid; gap:9px; }
+.pn-s{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; padding:8px 10px; border-radius:10px; cursor:pointer; transition:background .2s; }
+.pn-s:hover{ background:rgba(255,255,255,.04); }
+.pn-s .nm{ font:600 13px 'Inter',sans-serif; color:var(--bone); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pn-s .pc{ font:700 12px 'IBM Plex Mono',monospace; color:var(--bone-soft); }
+.pn-s .tr{ grid-column:1/-1; height:6px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; position:relative; }
+.pn-s .tr i{ position:absolute; left:0; top:0; bottom:0; width:0; border-radius:99px; transition:width 1.2s cubic-bezier(.2,.8,.2,1); }
+.pn-s .tr em{ position:absolute; left:0; top:0; bottom:0; width:0; background:rgba(255,255,255,.08); }
+.pn-s.lo .pc{ color:#fca5a5; } .pn-s.lo .tr i{ background:linear-gradient(90deg,#b91c1c,#f87171); }
+.pn-s.md .tr i{ background:linear-gradient(90deg,#b45309,#fbbf24); }
+.pn-s.hi .tr i{ background:linear-gradient(90deg,var(--gold-dim),var(--gold-bright)); }
+.pn-s.na .pc{ color:var(--bone-dim); }
+
+/* gráfico 14 dias */
+.pn-chart svg{ width:100%; height:150px; display:block; overflow:visible; }
+.pn-chart .ax{ font:500 9px 'IBM Plex Mono',monospace; fill:var(--bone-dim); }
+
+/* ---------- paleta de comandos ---------- */
+#v2Pal{ position:fixed; inset:0; z-index:100000; display:none; align-items:flex-start; justify-content:center; padding:12vh 14px 14px; background:rgba(0,0,0,.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+#v2Pal.on{ display:flex; animation:v2fade .18s ease-out; }
+@keyframes v2fade{ from{ opacity:0; } }
+#v2Pal .box{ width:min(640px,100%); border-radius:18px; background:rgba(16,16,19,.92); border:1px solid var(--v2-stroke-hi); box-shadow:0 40px 100px -20px #000, 0 0 0 1px color-mix(in srgb,var(--gold) 20%,transparent); overflow:hidden; animation:v2pop .22s cubic-bezier(.2,.8,.2,1); }
+@keyframes v2pop{ from{ transform:translateY(-10px) scale(.98); opacity:0; } }
+#v2Pal input{ width:100%; box-sizing:border-box; border:0; outline:0; background:transparent; color:#fff; font:500 17px 'Inter',sans-serif; padding:18px 20px; border-bottom:1px solid var(--v2-stroke); }
+#v2Pal ul{ list-style:none; margin:0; padding:8px; max-height:52vh; overflow:auto; }
+#v2Pal li{ display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; cursor:pointer; color:var(--bone-soft); font-size:14px; }
+#v2Pal li .g{ margin-left:auto; font:600 10px 'IBM Plex Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--bone-dim); white-space:nowrap; }
+#v2Pal li .t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#v2Pal li.sel{ background:color-mix(in srgb,var(--gold) 16%,transparent); color:#fff; }
+#v2Pal li .e{ width:26px; text-align:center; flex:0 0 auto; }
+#v2Pal .ft{ display:flex; gap:14px; padding:10px 16px; border-top:1px solid var(--v2-stroke); font:500 10.5px 'IBM Plex Mono',monospace; color:var(--bone-dim); }
+#v2Pal .ft kbd{ border:1px solid var(--v2-stroke-hi); border-radius:4px; padding:0 4px; }
+
+/* confete */
+#v2Conf{ position:fixed; inset:0; pointer-events:none; z-index:100001; }
+
+/* ---------- assistente de sincronização ---------- */
+.v2-diag{ margin-top:12px; border:1px solid var(--v2-stroke); border-radius:12px; padding:12px 14px; background:rgba(0,0,0,.35); font-size:13px; line-height:1.5; }
+.v2-diag .st{ display:flex; gap:10px; padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.06); }
+.v2-diag .st:last-child{ border-bottom:0; }
+.v2-diag .st .s{ width:22px; flex:0 0 auto; text-align:center; }
+.v2-diag .st .fix{ display:block; color:#fcd34d; font-size:12.5px; margin-top:3px; }
+.v2-env{ border-radius:10px; padding:10px 12px; margin:0 0 12px; font-size:13px; line-height:1.5; }
+.v2-env.bad{ background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.45); color:#fecaca; }
+.v2-env.ok{ background:rgba(74,222,128,.08); border:1px solid rgba(74,222,128,.35); color:#bbf7d0; }
+.bg-modal .box{ border-radius:18px !important; }
+
+@media (prefers-reduced-motion: reduce){ .v2-rv{ opacity:1; transform:none; transition:none; } .v2-enter, .v2-hit, .v2-miss{ animation:none; } .progress-fill::after, .bb-fill::after{ display:none; } }
+
+.pn-h{ flex-wrap:wrap; }
+.pn-heat{ grid-auto-columns:15px; justify-content:start; gap:4px; }
+.pn-heat i{ width:15px; height:15px; }
+@media (max-width:640px){
+  .pn-card{ padding:16px; border-radius:16px; }
+  .pn-clock{ gap:6px; flex-wrap:nowrap; } .pn-clock .u{ flex:1; min-width:0; padding:8px 4px 6px; } .pn-clock .n{ font-size:28px; }
+  .pn-goal{ flex-direction:column; align-items:stretch; gap:14px; } .pn-ring{ margin:0 auto; width:136px; height:136px; }
+  .pn-goal-side{ text-align:center; } .pn-seg{ flex-wrap:wrap; justify-content:center; }
+  .pn-h .pn-sub{ flex-basis:100%; }
+  .pn-heat{ grid-auto-columns:13px; gap:3px; } .pn-heat i{ width:13px; height:13px; }
+}
+
+</style>
+<script id="v2js">
+/* ================= CENTRAL TÁTICA v2 · Painel, paleta de comandos, atalhos, efeitos, sync assistida ================= */
+(function(){
+'use strict';
+const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dkey = d => { const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); };
+
+/* ---------------- REGISTRO DE ATIVIDADE (por dia) ---------------- */
+const LS_ACT='ct_atividade_v1', LS_GOAL='ct_meta_diaria';
+function actLoad(){ try{ return JSON.parse(localStorage.getItem(LS_ACT)||'{}'); }catch(e){ return {}; } }
+function actSave(a){ try{ localStorage.setItem(LS_ACT, JSON.stringify(a)); }catch(e){} }
+let ACT = actLoad();
+if(!Object.keys(ACT).length){ // primeira vez: reconstrói pelo histórico das questões
+  try{ Object.values(progress||{}).forEach(p=>{ if(!p||!p.lastAt) return; const k=dkey(p.lastAt); const o=ACT[k]||(ACT[k]={n:0,ok:0}); o.n++; if(p.correct) o.ok++; }); actSave(ACT); }catch(e){}
+}
+function goal(){ const n=parseInt((()=>{ try{ return localStorage.getItem(LS_GOAL); }catch(e){ return null; } })()||'30',10); return [20,30,50,80,120].includes(n)?n:30; }
+function streak(){ let s=0; const d=new Date(); if(!(ACT[dkey(d)]||{}).n) d.setDate(d.getDate()-1); while((ACT[dkey(d)]||{}).n){ s++; d.setDate(d.getDate()-1); } return s; }
+function bestStreak(){ const ks=Object.keys(ACT).filter(k=>ACT[k].n).sort(); let b=0,c=0,prev=null; ks.forEach(k=>{ const t=new Date(k+'T12:00'); c = (prev && (t-prev)/864e5<1.5) ? c+1 : 1; b=Math.max(b,c); prev=t; }); return b; }
+try{ if(!_EXTRA_KEYS.includes(LS_ACT)) _EXTRA_KEYS.push(LS_ACT, LS_GOAL); }catch(e){}
+// mescla atividade ao puxar da nuvem (não perde o que foi feito em cada aparelho)
+try{ const _ae=_applyExtras; window._applyExtras = _applyExtras = function(o){ const mine=actLoad(); _ae(o); const cloud=actLoad(); Object.keys(mine).forEach(k=>{ const a=mine[k], b=cloud[k]; if(!b || a.n>b.n) cloud[k]=a; }); actSave(cloud); ACT=cloud; }; }catch(e){}
+
+const _ra = recordAnswer;
+window.recordAnswer = recordAnswer = function(id, given, correctAnswer){
+  const before=(ACT[dkey(Date.now())]||{}).n||0;
+  const ok=_ra(id, given, correctAnswer);
+  const k=dkey(Date.now()); const o=ACT[k]||(ACT[k]={n:0,ok:0}); o.n++; if(ok) o.ok++; actSave(ACT);
+  if(before<goal() && o.n>=goal()){ setTimeout(()=>{ confetti(); try{ _domToast(`🎯 <b>Meta do dia batida!</b> ${o.n} questões hoje. Sequência: <b>${streak()} dia(s)</b> 🔥`); }catch(e){} }, 400); }
+  setTimeout(()=>{ const c=$('#app .card'); const st=$('#app .stamp'); if(c && st){ c.classList.remove('v2-hit','v2-miss'); void c.offsetWidth; c.classList.add(ok?'v2-hit':'v2-miss'); } if(!ok && navigator.vibrate) try{ navigator.vibrate(60); }catch(e){} }, 0);
+  updateChips();
+  return ok;
+};
+// confete ao dominar um tópico
+try{ const _dt=_domToast; window._domToast = _domToast = function(h){ if(/acertos seguidos/.test(h)) confetti(); return _dt(h); }; }catch(e){}
+
+/* ---------------- CONFETE ---------------- */
+function confetti(){
+  if(RM) return; let cv=$('#v2Conf'); if(!cv){ cv=document.createElement('canvas'); cv.id='v2Conf'; document.body.appendChild(cv); }
+  const W=cv.width=innerWidth, H=cv.height=innerHeight, x=cv.getContext('2d');
+  const cs=getComputedStyle(document.documentElement); const cols=[cs.getPropertyValue('--gold').trim()||'#D4AF37', cs.getPropertyValue('--gold-bright').trim()||'#fff', '#ffffff', '#4ade80'];
+  const P=Array.from({length:160},()=>({x:W/2+(Math.random()-.5)*160, y:H*.65, vx:(Math.random()-.5)*15, vy:-Math.random()*17-7, r:Math.random()*6+3, c:cols[Math.random()*cols.length|0], a:Math.random()*6, va:(Math.random()-.5)*.35}));
+  let t=0; (function f(){ x.clearRect(0,0,W,H); P.forEach(p=>{ p.vy+=.45; p.vx*=.99; p.x+=p.vx; p.y+=p.vy; p.a+=p.va; x.save(); x.translate(p.x,p.y); x.rotate(p.a); x.globalAlpha=Math.max(0,1-t/120); x.fillStyle=p.c; x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); x.restore(); }); if(++t<125) requestAnimationFrame(f); else x.clearRect(0,0,W,H); })();
+}
+window.v2confetti = confetti;
+
+/* ---------------- CONTADOR ANIMADO ---------------- */
+function countUp(root){
+  root.querySelectorAll('[data-count]').forEach(el=>{
+    const to=+el.getAttribute('data-count'), suf=el.getAttribute('data-suf')||''; if(RM||!isFinite(to)){ el.textContent=to+suf; return; }
+    const t0=performance.now(), D=1100; (function f(t){ const k=Math.min(1,(t-t0)/D), e=1-Math.pow(1-k,4); el.textContent=Math.round(to*e).toLocaleString('pt-BR')+suf; if(k<1) requestAnimationFrame(f); })(t0);
+  });
+}
+
+/* ---------------- PAINEL DE COMANDO ---------------- */
+let clockH=null;
+function trackStats(){
+  const subs=trackSubjects(); const rows=subs.map(s=>({s, ...subjectStats(s)})).filter(r=>r.total>0);
+  let ans=0, cor=0, tot=0; rows.forEach(r=>{ ans+=r.answered; cor+=r.correct; tot+=r.total; });
+  return {rows, ans, cor, tot, pct: ans?Math.round(cor/ans*100):0};
+}
+function wrongCount(){ const set=new Set(trackSubjects()); let n=0; QUESTIONS.forEach(q=>{ if(set.has(q.subject)){ const p=progress[q.id]; if(p && !p.correct) n++; } }); return n; }
+function domDone(){ let n=0; try{ currentEdital().forEach((m,mi)=>m.topicos.forEach((_,ti)=>{ const d=domState[editalTopicId(mi,ti)]; if(d&&d.done) n++; })); }catch(e){} return n; }
+function examInfo(){ const e=(typeof EXAM_DATES!=='undefined'&&EXAM_DATES[currentTrack])||{}; const ci=(typeof CONCURSO_INFO!=='undefined'&&CONCURSO_INFO[currentTrack])||{}; return {date:e.date, status:e.status, label:e.label||currentTrack, banca:ci.banca||''}; }
+
+function missions(ts){
+  const out=[]; const ex=examInfo(); const days=ex.date?_daysTo(ex.date):null;
+  const today=(ACT[dkey(Date.now())]||{}).n||0, G=goal();
+  if(days!==null && days>=0 && days<=21) out.push({ic:'⏱️', t:`Reta final: simulado cronometrado`, d:`Faltam ${days} dia(s). Treine tempo de prova e gestão de chute.`, go:()=>renderSimuladoSetup()});
+  const weak=ts.rows.filter(r=>r.answered>=5).sort((a,b)=>a.pct-b.pct)[0];
+  if(weak && weak.pct<75) out.push({ic:'🎯', t:`Reforçar ${weak.s}`, d:`Seu ponto mais fraco: ${weak.pct}% de acerto em ${weak.answered} questões.`, go:()=>renderSetup([weak.s])});
+  const w=wrongCount(); if(w) out.push({ic:'🩹', t:`Revisar ${w} erro(s)`, d:'Refazer o que você errou é o estudo com maior retorno por minuto.', go:()=>renderGlobalReview(trackSubjects())});
+  const pend=(savedTopics||[]).filter(t=>!t.studied && t.track===currentTrack).length; if(pend) out.push({ic:'📌', t:`${pend} assunto(s) salvos para estudar`, d:'Você marcou esses assuntos durante as questões.', go:()=>renderEstudar()});
+  const fresh=ts.rows.filter(r=>r.answered===0).sort((a,b)=>b.total-a.total)[0]; if(fresh) out.push({ic:'🧭', t:`Começar ${fresh.s}`, d:`${fresh.total} questões que você ainda não tocou.`, go:()=>renderSetup([fresh.s])});
+  if(today<G) out.push({ic:'⚡', t:`Faltam ${G-today} questões para a meta de hoje`, d:'Sessão mista com todas as matérias do concurso.', go:()=>renderSetup(trackSubjects())});
+  return out.slice(0,4);
+}
+function heatHTML(){
+  const cell=innerWidth<=640?16:19; const W=Math.max(12, Math.min(53, Math.floor(((app.clientWidth||900)-(innerWidth<=640?40:64))/cell))), end=new Date(); end.setHours(12,0,0,0); const start=new Date(end); start.setDate(start.getDate()-start.getDay()-(W-1)*7); // domingo de W semanas atrás
+  let h=''; const d=new Date(start); let act=0, tot=0;
+  for(let i=0;i<W*7;i++){ const k=dkey(d), a=ACT[k]||{n:0,ok:0}; const fut=d>end; const l=a.n===0?0:a.n<10?1:a.n<25?2:a.n<50?3:4; if(a.n){ act++; tot+=a.n; }
+    h+=`<i class="${fut?'fut':'l'+l}" title="${d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}: ${a.n} questões${a.n?', '+Math.round(a.ok/a.n*100)+'% de acerto':''}"></i>`; d.setDate(d.getDate()+1); }
+  return {h, act, tot, W};
+}
+function chartHTML(){
+  const N=14, days=[]; for(let i=N-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const a=ACT[dkey(d)]||{n:0,ok:0}; days.push({d, n:a.n, ok:a.ok}); }
+  const max=Math.max(10,...days.map(x=>x.n)); const W=420, H=130, bw=W/N;
+  let bars='', line='', pts=[];
+  days.forEach((x,i)=>{ const h=x.n/max*(H-18), hk=x.ok/max*(H-18), X=i*bw+bw*.18, w=bw*.64;
+    bars+=`<rect x="${X}" y="${H-h}" width="${w}" height="${h}" rx="3" fill="rgba(248,113,113,.55)"><title>${x.d.toLocaleDateString('pt-BR')}: ${x.n} questões, ${x.ok} certas</title></rect><rect x="${X}" y="${H-hk}" width="${w}" height="${hk}" rx="3" fill="url(#v2bar)"/>`;
+    if(x.n) pts.push([X+w/2, H-(x.ok/x.n)*(H-18)]);
+    if(i%2===0 || i===N-1) bars+=`<text class="ax" x="${X+w/2}" y="${H+12}" text-anchor="middle">${String(x.d.getDate()).padStart(2,'0')}/${String(x.d.getMonth()+1).padStart(2,'0')}</text>`; });
+  if(pts.length>1) line=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 3" opacity=".7"/>`+pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="#fff"/>`).join('');
+  return `<svg viewBox="0 -4 ${W} ${H+18}" preserveAspectRatio="none"><defs><linearGradient id="v2bar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="var(--gold-dim)"/><stop offset="1" stop-color="var(--gold-bright)"/></linearGradient></defs>${bars}${line}</svg>`;
+}
+
+function renderPainel(){
+  currentView='painel'; tabsNav.style.display='flex'; setActiveTab('painel'); document.body.classList.add('v2-wide');
+  const ts=trackStats(), ex=examInfo(), G=goal(), today=ACT[dkey(Date.now())]||{n:0,ok:0}, st=streak(), bs=bestStreak();
+  const ed=editalOverallStats(), dd=domDone();
+  const yest=(()=>{ const d=new Date(); d.setDate(d.getDate()-1); return ACT[dkey(d)]||{n:0,ok:0}; })();
+  const last7=(()=>{ let n=0,ok=0; for(let i=0;i<7;i++){ const d=new Date(); d.setDate(d.getDate()-i); const a=ACT[dkey(d)]; if(a){ n+=a.n; ok+=a.ok; } } return {n,ok,p:n?Math.round(ok/n*100):null}; })();
+  const prev7=(()=>{ let n=0,ok=0; for(let i=7;i<14;i++){ const d=new Date(); d.setDate(d.getDate()-i); const a=ACT[dkey(d)]; if(a){ n+=a.n; ok+=a.ok; } } return {n,ok,p:n?Math.round(ok/n*100):null}; })();
+  const trend = (last7.p!==null && prev7.p!==null) ? last7.p-prev7.p : null;
+  const C=2*Math.PI*62, frac=Math.min(1,today.n/G);
+  const heat=heatHTML(); const mis=missions(ts);
+  const subj=ts.rows.slice().sort((a,b)=>{ if(!a.answered&&!b.answered) return b.total-a.total; if(!a.answered) return 1; if(!b.answered) return -1; return a.pct-b.pct; });
+  const days = ex.date ? _daysTo(ex.date) : null;
+  app.innerHTML = `
+  <div class="pn">
+    <div class="pn-top">
+      <div class="pn-card pn-count v2-rv" id="pnCount">
+        <div><div class="lbl">${ex.date ? (days>=0?'Contagem regressiva':'Prova realizada') : 'Situação do concurso'}</div>
+        <div class="ttl">${esc(TRACK_LABELS[currentTrack].title.replace('Central Tática — ',''))}</div>
+        <div class="pn-sub" style="margin-top:6px;">${ex.date?('Prova em '+_fmtBR(ex.date)):''}${ex.banca?' · '+esc(ex.banca):''}</div></div>
+        ${ex.date && days>=0 ? `<div class="pn-clock" id="pnClock"><div class="u"><div class="n" data-u="d">--</div><div class="k">dias</div></div><div class="u"><div class="n" data-u="h">--</div><div class="k">horas</div></div><div class="u"><div class="n" data-u="m">--</div><div class="k">min</div></div><div class="u"><div class="n" data-u="s">--</div><div class="k">seg</div></div></div>${days<=10?`<span class="pn-urgent">⚠️ Reta final: priorize revisão e simulados</span>`:''}`
+          : `<p style="color:var(--bone-soft);font-size:14px;line-height:1.55;margin:14px 0 0;">${esc(ex.status||'Sem data definida.')}</p>`}
+      </div>
+      <div class="pn-card v2-rv">
+        <div class="pn-h"><h3><i>◎</i>Meta de hoje</h3><span class="pn-sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</span></div>
+        <div class="pn-goal">
+          <div class="pn-ring"><svg viewBox="0 0 150 150"><defs><linearGradient id="v2grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--gold-bright)"/><stop offset="1" stop-color="var(--gold-dim)"/></linearGradient></defs><circle class="bg" cx="75" cy="75" r="62" fill="none" stroke-width="11"/><circle class="fg" id="pnRing" cx="75" cy="75" r="62" fill="none" stroke-width="11" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
+            <div class="c"><div><b data-count="${today.n}">0</b><span>de ${G}</span></div></div></div>
+          <div class="pn-goal-side">
+            <p>${today.n>=G?'<b style="color:var(--v2-ok)">Meta batida.</b> Cada questão extra agora é lucro.':`Faltam <b style="color:#fff">${G-today.n}</b> questões. ${today.n?`Hoje: ${Math.round(today.ok/today.n*100)}% de acerto.`:'Bora começar?'}`}</p>
+            <div class="pn-seg" id="pnGoalSeg">${[20,30,50,80,120].map(n=>`<button data-g="${n}" class="${n===G?'sel':''}">${n}</button>`).join('')}</div>
+            <div style="margin-top:12px;"><button class="btn primary" id="pnGo">⚡ Praticar agora</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pn-row">
+      <div class="pn-card pn-kpi v2-rv"><div class="k"><span>Sequência</span><span>🔥</span></div><div class="v"><span data-count="${st}">0</span><small>dia${st===1?'':'s'}</small></div><div class="d">Recorde: ${bs} dia(s)</div></div>
+      <div class="pn-card pn-kpi v2-rv"><div class="k"><span>Acerto geral</span><span>✓</span></div><div class="v"><span data-count="${ts.pct}" data-suf="%">0</span></div><div class="d ${trend===null?'':trend>=0?'up':'down'}">${trend===null?'7 dias: '+(last7.p===null?'sem dados':last7.p+'%'):(trend>=0?'▲ ':'▼ ')+Math.abs(trend)+' p.p. vs semana anterior'}</div><div class="bar"><i data-w="${ts.pct}"></i></div></div>
+      <div class="pn-card pn-kpi v2-rv"><div class="k"><span>Respondidas</span><span>∑</span></div><div class="v"><span data-count="${ts.ans}">0</span><small>/ ${ts.tot.toLocaleString('pt-BR')}</small></div><div class="d">${ts.tot?Math.round(ts.ans/ts.tot*100):0}% do banco deste concurso</div><div class="bar"><i data-w="${ts.tot?Math.round(ts.ans/ts.tot*100):0}"></i></div></div>
+      <div class="pn-card pn-kpi v2-rv"><div class="k"><span>Edital</span><span>🎖️</span></div><div class="v"><span data-count="${ed.pct}" data-suf="%">0</span></div><div class="d">${ed.checked}/${ed.total} tópicos · ${dd} dominado(s)</div><div class="bar"><i data-w="${ed.pct}"></i></div></div>
+    </div>
+
+    <div class="pn-two">
+      <div class="pn-card v2-rv"><div class="pn-h"><h3><i>➜</i>Missões de hoje</h3><span class="pn-sub">geradas pelo seu desempenho</span></div>
+        <div class="pn-mis">${mis.length?mis.map((m,i)=>`<button class="pn-m" data-mi="${i}"><span class="ic">${m.ic}</span><span class="tx"><b>${esc(m.t)}</b><span>${esc(m.d)}</span></span><span class="go">→</span></button>`).join(''):'<p class="pn-sub">Tudo em dia. Faça um simulado!</p>'}</div></div>
+      <div class="pn-card v2-rv"><div class="pn-h"><h3><i>▦</i>Últimos 14 dias</h3><span class="pn-sub">7d: ${last7.n} questões</span></div>
+        <div class="pn-chart">${chartHTML()}</div>
+        <div class="pn-leg" style="justify-content:flex-start;gap:12px;"><span><i style="background:var(--gold)"></i> certas</span><span><i style="background:rgba(248,113,113,.6)"></i> erradas</span><span>┄ % de acerto</span></div></div>
+    </div>
+
+    <div class="pn-card v2-rv"><div class="pn-h"><h3><i>▤</i>Constância</h3><span class="pn-sub">${heat.act} dia(s) de estudo · ${heat.tot.toLocaleString('pt-BR')} questões em ${heat.W} semanas</span></div>
+      <div class="pn-heat">${heat.h}</div>
+      <div class="pn-leg">menos <i style="background:rgba(255,255,255,.05)"></i><i class="l1" style="background:color-mix(in srgb,var(--gold) 28%,transparent)"></i><i style="background:color-mix(in srgb,var(--gold) 50%,transparent)"></i><i style="background:color-mix(in srgb,var(--gold) 75%,transparent)"></i><i style="background:var(--gold-bright)"></i> mais</div></div>
+
+    <div class="pn-card v2-rv"><div class="pn-h"><h3><i>⌁</i>Raio-X por matéria</h3><span class="pn-sub">do mais fraco ao mais forte · toque para praticar</span></div>
+      <div class="pn-subj">${subj.map(r=>{ const cls=!r.answered?'na':r.pct<60?'lo':r.pct<75?'md':'hi'; const cov=Math.round(r.answered/r.total*100);
+        return `<div class="pn-s ${cls}" data-subj="${esc(r.s)}" title="${r.answered}/${r.total} respondidas"><span class="nm">${cls==='lo'?'🎯 ':''}${esc(r.s)}</span><span class="pc">${r.answered?r.pct+'%':'novo'} <span style="color:var(--bone-dim);font-weight:500">· ${r.answered}/${r.total}</span></span><span class="tr"><em style="width:${cov}%"></em><i data-w="${r.answered?r.pct:0}"></i></span></div>`; }).join('')}</div></div>
+  </div>`;
+  // interações
+  app.querySelectorAll('.pn-m').forEach(b=>b.onclick=()=>{ const m=mis[+b.dataset.mi]; if(m) m.go(); });
+  app.querySelectorAll('.pn-s').forEach(b=>b.onclick=()=>renderSetup([b.dataset.subj]));
+  $('#pnGo').onclick=()=>renderSetup(trackSubjects());
+  $('#pnGoalSeg').onclick=e=>{ const b=e.target.closest('button[data-g]'); if(!b) return; try{ localStorage.setItem(LS_GOAL,b.dataset.g); }catch(_){} try{ pushToCloudDebounced(); }catch(_){} renderPainel(); };
+  try{ const img=HERO_IMG && HERO_IMG[currentTrack]; if(img) $('#pnCount').style.setProperty('--v2-hero', `url(${img})`); }catch(e){}
+  // animações de entrada
+  requestAnimationFrame(()=>{ setTimeout(()=>{ const r=$('#pnRing'); if(r) r.style.strokeDashoffset=C*(1-frac); app.querySelectorAll('[data-w]').forEach(i=>i.style.width=i.dataset.w+'%'); countUp(app); }, 120); });
+  // relógio
+  clearInterval(clockH); if(ex.date && days>=0){ const target=new Date(ex.date+'T08:00:00').getTime(); const tick=()=>{ const el=$('#pnClock'); if(!el){ clearInterval(clockH); return; } let ms=Math.max(0,target-Date.now()); const d=Math.floor(ms/864e5); ms-=d*864e5; const h=Math.floor(ms/36e5); ms-=h*36e5; const m=Math.floor(ms/6e4); const s=Math.floor((ms-m*6e4)/1000);
+      el.querySelector('[data-u=d]').textContent=d; el.querySelector('[data-u=h]').textContent=String(h).padStart(2,'0'); el.querySelector('[data-u=m]').textContent=String(m).padStart(2,'0'); el.querySelector('[data-u=s]').textContent=String(s).padStart(2,'0'); }; tick(); clockH=setInterval(tick,1000); }
+  reveal(); spot();
+}
+window.renderPainel = renderPainel;
+
+/* ---------------- ABA "PAINEL" + ganchos de navegação ---------------- */
+const pBtn=document.createElement('button'); pBtn.setAttribute('data-tab','painel'); pBtn.textContent='⚡ Painel'; tabsNav.insertBefore(pBtn, tabsNav.firstChild);
+tabsNav.addEventListener('click', e=>{ const b=e.target.closest('button[data-tab]'); if(!b) return; if(b.dataset.tab==='painel') renderPainel(); else document.body.classList.remove('v2-wide'); });
+const _sat=setActiveTab; window.setActiveTab = setActiveTab = function(t){ if(t!=='painel') document.body.classList.remove('v2-wide'); return _sat(t); };
+const _st=setTrack; window.setTrack = setTrack = function(t){ const wasP=currentView==='painel'; _st(t); if(wasP) renderPainel(); updateChips(); };
+// depois de puxar da nuvem, atualiza o painel
+try{ const _pl=pullFromCloud; window.pullFromCloud = pullFromCloud = function(){ _pl(); setTimeout(()=>{ ACT=actLoad(); if(currentView==='painel') renderPainel(); updateChips(); }, 2500); }; }catch(e){}
+
+/* ---------------- EFEITOS: transição, revelar ao rolar, holofote, ripple, barra de rolagem ---------------- */
+let io=null;
+function reveal(){
+  if(RM || !('IntersectionObserver' in window)){ app.querySelectorAll('.v2-rv').forEach(e=>e.classList.add('in')); return; }
+  if(!io) io=new IntersectionObserver(es=>es.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } }), {rootMargin:'0px 0px -6% 0px'});
+  let i=0; app.querySelectorAll('.v2-rv:not(.in)').forEach(e=>{ e.style.transitionDelay=Math.min(i++*55,400)+'ms'; io.observe(e); });
+  setTimeout(()=>app.querySelectorAll('.v2-rv:not(.in)').forEach(e=>e.classList.add('in')), 3500);
+}
+function spot(){ app.querySelectorAll('.card, .pn-card, .subject-card').forEach(c=>c.classList.add('v2-spot')); }
+document.addEventListener('pointermove', e=>{ const c=e.target.closest && e.target.closest('.v2-spot'); if(!c) return; const r=c.getBoundingClientRect(); c.style.setProperty('--mx',(e.clientX-r.left)+'px'); c.style.setProperty('--my',(e.clientY-r.top)+'px'); }, {passive:true});
+document.addEventListener('pointerdown', e=>{ const b=e.target.closest && e.target.closest('.btn, .pn-m, #tabsNav button'); if(!b||RM) return; const r=b.getBoundingClientRect(), s=Math.max(r.width,r.height); const sp=document.createElement('span'); sp.className='v2-ripple'; sp.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`; if(getComputedStyle(b).position==='static') b.style.position='relative'; b.style.overflow='hidden'; b.appendChild(sp); setTimeout(()=>sp.remove(),620); });
+let lastView=null;
+new MutationObserver(()=>{
+  const v=currentView; const quiet=(v==='practice'||v==='simulado-run') && lastView===v; lastView=v;
+  if(!quiet && !RM){ app.classList.remove('v2-enter'); void app.offsetWidth; app.classList.add('v2-enter'); }
+  spot(); addKbdHint();
+}).observe(app, {childList:true});
+const bar=document.createElement('div'); bar.id='v2Progress'; document.body.appendChild(bar);
+addEventListener('scroll', ()=>{ const h=document.documentElement.scrollHeight-innerHeight; bar.style.width=(h>0?scrollY/h*100:0)+'%'; }, {passive:true});
+
+/* ---------------- ATALHOS DE TECLADO NAS QUESTÕES ---------------- */
+function addKbdHint(){ if(!app.querySelector('.btn-answer') || app.querySelector('.v2-kbdhint')) return; const mc=!!app.querySelector('.mc-option'); const row=app.querySelector('.answer-row'); if(!row) return;
+  const h=document.createElement('div'); h.className='v2-kbdhint'; h.innerHTML= mc? 'Atalhos: <kbd>A</kbd>…<kbd>E</kbd> responder · <kbd>Enter</kbd> próxima · <kbd>←</kbd> anterior · <kbd>Ctrl</kbd>+<kbd>K</kbd> buscar' : 'Atalhos: <kbd>C</kbd> certo · <kbd>E</kbd> errado · <kbd>Enter</kbd> próxima · <kbd>←</kbd> anterior · <kbd>Ctrl</kbd>+<kbd>K</kbd> buscar'; row.after(h); }
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); openPal(); return; }
+  if(palOpen()) return;
+  const tag=(document.activeElement&&document.activeElement.tagName)||''; if(/INPUT|TEXTAREA|SELECT/.test(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if(document.querySelector('.bg-modal')) return;
+  if(e.key==='/' ){ e.preventDefault(); openPal(); return; }
+  const btns=[...app.querySelectorAll('.btn-answer[data-choice]')]; if(!btns.length) return;
+  const k=e.key.toLowerCase(); const mc=!!app.querySelector('.mc-option'); let target=null;
+  if(mc){ if(/^[a-e]$/.test(k)) target=btns.find(b=>b.dataset.choice.toLowerCase()===k); else if(/^[1-5]$/.test(k)) target=btns[+k-1]; }
+  else { if(k==='c') target=btns.find(b=>b.dataset.choice==='Certo'); if(k==='e') target=btns.find(b=>b.dataset.choice==='Errado'); }
+  if(target && !target.disabled){ e.preventDefault(); target.click(); return; }
+  if(e.key==='Enter' || e.key==='ArrowRight'){ const n=$('#nextBtn')||$('#simNextBtn'); if(n){ e.preventDefault(); n.click(); } }
+  if(e.key==='ArrowLeft'){ const p=$('#prevBtn')||$('#prevBtnBottom')||$('#simPrevBtn'); if(p){ e.preventDefault(); p.click(); } }
+});
+
+/* ---------------- PALETA DE COMANDOS (Ctrl+K) ---------------- */
+let pal=null, palSel=0, palItems=[];
+function palOpen(){ return pal && pal.classList.contains('on'); }
+function baseItems(){
+  const it=[];
+  it.push({e:'⚡', t:'Painel de comando', g:'tela', run:renderPainel});
+  [['edital','📋','Edital'],['dashboard','✍️','Questões'],['simulado','⏱️','Simulado'],['stats','📊','Estatísticas'],['estudar','📌','A estudar'],['comparar','🔀','Comparar concursos']].forEach(([k,e,t])=>it.push({e, t, g:'tela', run:()=>tabsNav.querySelector(`[data-tab="${k}"]`).click()}));
+  ALL_TRACKS.forEach(tr=>it.push({e:'🎖️', t:'Ir para '+((TRACK_LABELS[tr]||{}).title||tr).replace('Central Tática — ',''), g:tr, run:()=>setTrack(tr)}));
+  trackSubjects().forEach(s=>it.push({e:'✍️', t:'Praticar '+s, g:'matéria', run:()=>renderSetup([s])}));
+  try{ currentEdital().forEach((m,mi)=>m.topicos.forEach((tp,ti)=>it.push({e:'📋', t:tp, g:m.materia.slice(0,22), run:()=>goEditalTopic(mi,ti)}))); }catch(e){}
+  it.push({e:'☁️', t:'Sincronização entre aparelhos', g:'config', run:openSyncModal});
+  it.push({e:'⬇️', t:'Baixar backup do progresso', g:'config', run:exportBackup});
+  it.push({e:'🎉', t:'Comemorar (confete)', g:'diversão', run:confetti});
+  return it;
+}
+function score(t, q){ const T=_norm(t); const ws=_norm(q).split(/\s+/).filter(Boolean); if(!ws.every(w=>T.includes(w))) return -1; return (T.startsWith(ws[0])?50:0) - T.length/100; }
+function palRender(q){
+  const ul=pal.querySelector('ul'); q=(q||'').trim();
+  let items = q ? baseItems().map(i=>({...i, s:score(i.t,q)})).filter(i=>i.s>=0).sort((a,b)=>b.s-a.s).slice(0,40) : baseItems().slice(0,14);
+  if(q.length>=3){ const subs=new Set(trackSubjects()); const ws=_norm(q).split(/\s+/).filter(Boolean); const hits=[];
+    for(const qq of QUESTIONS){ if(!subs.has(qq.subject)) continue; const T=_norm(qq.q); if(ws.every(w=>T.includes(w))){ hits.push(qq); if(hits.length>=8) break; } }
+    hits.forEach(h=>items.push({e:'❓', t:_norm(h.q).replace(/\s+/g,' ').slice(0,110), g:h.subject.slice(0,18), run:()=>renderSetup(null,null,[h.id],'🔍 Questão encontrada na busca')}));
+    if(hits.length) items.push({e:'🔎', t:`Praticar todas as questões com "${q}"`, g:'busca', run:()=>{ const ids=QUESTIONS.filter(x=>subs.has(x.subject) && ws.every(w=>_norm(x.q+' '+x.block).includes(w))).map(x=>x.id); renderSetup(null,null,ids,'🔍 Busca: '+q); }});
+  }
+  palItems=items; palSel=0;
+  ul.innerHTML = items.length ? items.map((i,n)=>`<li data-n="${n}" class="${n===0?'sel':''}"><span class="e">${i.e}</span><span class="t">${esc(i.t)}</span><span class="g">${esc(i.g)}</span></li>`).join('') : '<li style="cursor:default">Nada encontrado. Tente outra palavra.</li>';
+}
+function palMove(d){ const lis=pal.querySelectorAll('li[data-n]'); if(!lis.length) return; palSel=(palSel+d+lis.length)%lis.length; lis.forEach((l,i)=>l.classList.toggle('sel',i===palSel)); lis[palSel].scrollIntoView({block:'nearest'}); }
+function palRun(n){ const it=palItems[n]; if(!it) return; closePal(); setTimeout(()=>{ it.run(); window.scrollTo({top: (document.getElementById('tabsNav')||{}).offsetTop||0, behavior:'smooth'}); },10); }
+function openPal(){
+  if(!pal){ pal=document.createElement('div'); pal.id='v2Pal'; pal.innerHTML=`<div class="box"><input type="text" placeholder="Buscar tópico, matéria, concurso ou texto de questão…" autocomplete="off" spellcheck="false"><ul></ul><div class="ft"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span></div></div>`; document.body.appendChild(pal);
+    const inp=pal.querySelector('input'); let tm; inp.addEventListener('input',()=>{ clearTimeout(tm); tm=setTimeout(()=>palRender(inp.value),90); });
+    inp.addEventListener('keydown',e=>{ if(e.key==='ArrowDown'){ e.preventDefault(); palMove(1);} else if(e.key==='ArrowUp'){ e.preventDefault(); palMove(-1);} else if(e.key==='Enter'){ e.preventDefault(); palRun(palSel);} else if(e.key==='Escape'){ closePal(); } });
+    pal.addEventListener('click',e=>{ if(e.target===pal) return closePal(); const li=e.target.closest('li[data-n]'); if(li) palRun(+li.dataset.n); });
+  }
+  pal.classList.add('on'); const inp=pal.querySelector('input'); inp.value=''; palRender(''); setTimeout(()=>inp.focus(),20);
+}
+function closePal(){ if(pal) pal.classList.remove('on'); }
+window.v2openPalette = openPal;
+
+/* ---------------- CHIPS NA BARRA DO TOPO ---------------- */
+const tb=$('.topbar'); const tools=document.createElement('div'); tools.className='v2-tools';
+tools.innerHTML=`<button class="v2-chip" id="v2Streak" title="Dias seguidos estudando">🔥 <span id="v2StreakN">0</span></button><button class="v2-chip" id="v2Cloud" title="Sincronização"><span class="v2-dot" id="v2Dot"></span><span class="v2-lbl" id="v2CloudL">Sync</span></button><button class="v2-chip" id="v2Search" title="Buscar (Ctrl+K)">🔍 <span class="v2-lbl">Buscar</span> <kbd>Ctrl K</kbd></button>`;
+if(tb) tb.appendChild(tools);
+$('#v2Search').onclick=openPal; $('#v2Cloud').onclick=()=>openSyncModal(); $('#v2Streak').onclick=renderPainel;
+function updateChips(){
+  const n=$('#v2StreakN'); if(n) n.textContent=streak();
+  const d=$('#v2Dot'), l=$('#v2CloudL'); if(!d) return;
+  let cls='', lab='Sync off';
+  try{ if(!firebaseIsConfigured() || !(syncEnabled&&syncCode)){ cls='off'; lab='Sync off'; } else if(_syncErr){ cls='err'; lab='Erro sync'; } else { cls='ok'; lab=_syncLast?('Sync '+new Date(_syncLast).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):'Sync'; } }catch(e){}
+  d.className='v2-dot '+cls; l.textContent=lab;
+}
+try{ const _us=updateSyncStatusUI; window.updateSyncStatusUI = updateSyncStatusUI = function(){ _us(); updateChips(); }; }catch(e){}
+updateChips();
+
+/* ---------------- SINCRONIZAÇÃO ASSISTIDA: ambiente + teste de conexão ---------------- */
+function envCheck(){
+  const inFrame=(()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
+  if(location.protocol==='file:') return {ok:false, msg:'Você abriu o <b>arquivo do computador</b> (endereço começa com file://). A sincronização até funciona, mas o celular não tem esse arquivo. Abra o site pelo endereço <b>https://SEU-USUARIO.github.io/central-tatica/</b>.'};
+  if(inFrame) return {ok:false, msg:'Você está numa <b>pré-visualização</b> (dentro de outra página). Abra o site direto no navegador, pelo endereço do GitHub Pages.'};
+  if(!/github\.io$/.test(location.hostname)) return {ok:true, msg:'Endereço: <b>'+esc(location.host)+'</b>'};
+  return {ok:true, msg:'✔ Você está no site publicado (<b>'+esc(location.host)+'</b>). Ótimo.'};
+}
+function errFix(e){
+  const c=(e&&e.code)||'', m=((e&&e.message)||String(e||'')).toLowerCase();
+  if(c==='permission-denied' || m.includes('permission')) return 'As <b>regras</b> não foram publicadas. Firebase → Firestore Database → aba <b>Regras</b> → apague tudo, cole as regras (botão "Copiar regras" aqui embaixo) → <b>Publicar</b>. Espere 1 minuto e teste de novo.';
+  if(m.includes('api key') || m.includes('api_key') || c==='invalid-argument') return 'A <b>apiKey</b> está errada ou incompleta. Copie de novo o bloco firebaseConfig inteiro (Configurações do projeto → Seus apps → Config).';
+  if(m.includes('does not exist') || c==='not-found') return 'O <b>banco Firestore não existe</b> com o ID <b>(default)</b>. Firebase → Criação → <b>Firestore Database</b> → Criar banco de dados → deixe o ID como <b>(default)</b> → modo de produção → local southamerica-east1 (São Paulo).';
+  if(m.includes('has not been used') || m.includes('disabled') || c==='failed-precondition') return 'A API do Firestore ainda não está ativa. Crie o banco em Firestore Database (ID <b>(default)</b>), espere 2 minutos e teste de novo.';
+  if(c==='timeout' || c==='unavailable') return 'O Firebase <b>não respondeu</b>. Causas comuns: (1) o banco Firestore ainda não foi criado ou foi criado com outro ID em vez de <b>(default)</b>; (2) bloqueador de anúncios ou navegador Brave bloqueando o Google; (3) internet instável. Confira o item (1) primeiro.';
+  return 'Erro: <code>'+esc(c||m)+'</code>. Mande um print desta tela para o Claude.';
+}
+function runDiag(out, cfgTxt){
+  const steps=[]; const put=()=>{ out.innerHTML=steps.map(s=>`<div class="st"><span class="s">${s.s}</span><span>${s.t}${s.fix?`<span class="fix">👉 ${s.fix}</span>`:''}</span></div>`).join(''); };
+  const add=(s,t,fix)=>{ steps.push({s,t,fix}); put(); return steps[steps.length-1]; };
+  out.style.display='';
+  const env=envCheck(); add(env.ok?'✅':'⚠️', 'Onde o site está aberto: '+env.msg);
+  if(typeof firebase==='undefined'){ add('❌','Arquivos do Firebase não carregaram.','Verifique a internet. Se usa bloqueador de anúncios ou o navegador Brave, desative para este site e recarregue (F5).'); return; }
+  add('✅','Arquivos do Firebase carregados.');
+  const cfg=_parseFbConfig(cfgTxt||'') || (firebaseIsConfigured()?firebaseConfig:null);
+  if(!cfg){ add('❌','Configuração (campo 1) não reconhecida.','Cole o bloco que começa com <code>const firebaseConfig = {</code> e termina em <code>};</code>. Ele precisa ter <b>apiKey</b> e <b>projectId</b>.'); return; }
+  add('✅','Configuração reconhecida: projeto <b>'+esc(cfg.projectId)+'</b>.');
+  if(!/^AIza[0-9A-Za-z_\-]{30,}$/.test(cfg.apiKey)) add('⚠️','A apiKey parece incompleta ('+esc(cfg.apiKey.slice(0,8))+'…).','Ela costuma começar com AIza e ter 39 caracteres. Copie de novo.');
+  let app2; try{ app2=(firebase.apps||[]).find(a=>a.name==='ctdiag'); if(app2) app2.delete && app2.delete(); app2=firebase.initializeApp(cfg,'ctdiag'+Date.now()); }catch(e){ add('❌','Falha ao iniciar o Firebase: '+esc(e.message), 'Configuração inválida. Copie o bloco de novo.'); return; }
+  const row=add('⏳','Testando gravação no banco… (até 15 segundos)');
+  const db=app2.firestore(); const id='CT-diagnostico-'+Math.random().toString(36).slice(2,12)+'xxxxx';
+  const to=new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),15000));
+  Promise.race([db.collection('central_tatica_progress').doc(id).set({t:Date.now(), teste:true}), to])
+    .then(()=>Promise.race([db.collection('central_tatica_progress').doc(id).get(), to]))
+    .then(()=>{ row.s='✅'; row.t='Gravou e leu no banco com sucesso. <b>A conexão está funcionando!</b>'; put(); try{ db.collection('central_tatica_progress').doc(id).delete().catch(()=>{}); }catch(e){} add('🎉','Agora clique em <b>💾 Salvar e sincronizar</b>.'); })
+    .catch(e=>{ row.s='❌'; row.t='O banco recusou ou não respondeu.'; row.fix=errFix(e); put(); });
+}
+// injeta o assistente na janela de sincronização existente
+const _osm=openSyncModal;
+window.openSyncModal = openSyncModal = function(){
+  _osm(); const m=$('#syncModal'); if(!m) return; const box=m.querySelector('.box');
+  const env=envCheck(); const e=document.createElement('div'); e.className='v2-env '+(env.ok?'ok':'bad'); e.innerHTML=env.msg; box.querySelector('.hint').after(e);
+  const ta=m.querySelector('#fbCfgIn'); if(ta) ta.addEventListener('input',()=>{ ta.value=ta.value.replace(/[“”]/g,'"').replace(/[‘’]/g,"'"); });
+  const row=m.querySelector('.bg-row'); const t=document.createElement('button'); t.type='button'; t.className='btn'; t.textContent='🩺 Testar conexão'; row.insertBefore(t, row.children[1]||null);
+  const out=document.createElement('div'); out.className='v2-diag'; out.style.display='none'; row.after(out);
+  t.onclick=()=>runDiag(out, ta?ta.value:'');
+  // atalho para quem já tem código em outro aparelho
+  const ci=m.querySelector('#syncCodeIn'); if(ci && !syncCode){ const p=document.createElement('div'); p.style.cssText='font-size:12px;color:var(--bone-dim);margin:-2px 0 8px;'; p.innerHTML='Já ativou em outro aparelho? <b>Apague o código acima e cole o mesmo código</b> de lá (ou use o link 📲).'; ci.parentNode.after(p); }
+  if(typeof _syncErr!=='undefined' && _syncErr){ setTimeout(()=>t.click(), 50); }
+};
+// o parser aceita aspas "inteligentes" (coladas do WhatsApp/Word)
+try{ const _pc=_parseFbConfig; window._parseFbConfig = _parseFbConfig = function(txt){ return _pc(String(txt||'').replace(/[“”]/g,'"').replace(/[‘’]/g,"'")); }; }catch(e){}
+
+/* ---------------- INÍCIO: abre no Painel ---------------- */
+try{ renderPainel(); }catch(e){ console.error('Painel', e); try{ renderEdital(); }catch(_){} }
+})();
+
 </script>
 </body>
 </html>
