@@ -2011,6 +2011,67 @@ function loadSimState(){
   try{ const r = localStorage.getItem(LS_SIM_KEY); return r ? JSON.parse(r) : null; }catch(e){ return null; }
 }
 function clearSimState(){ try{ localStorage.removeItem(LS_SIM_KEY); }catch(e){} }
+// ===== Histórico completo de simulados (cada simulado guarda questões + respostas para rever depois) =====
+const SIM_HIST_FULL_MAX = 80;   // quantos simulados guardam o detalhe questão a questão (os mais antigos ficam só com o resumo)
+function simHistKey(h){ return h.id || h.at; }
+function simHistMerge(a, b){
+  const m = new Map();
+  [...(a||[]), ...(b||[])].forEach(h => { if(!h) return; const k = simHistKey(h); const old = m.get(k); if(!old || (!old.order && h.order)) m.set(k, h); });
+  return simHistTrim([...m.values()].sort((x,y)=> String(x.at).localeCompare(String(y.at))));
+}
+function simHistTrim(arr){
+  arr = arr.slice(-300);
+  const nFull = arr.filter(h => h.order).length;
+  let toStrip = Math.max(0, nFull - SIM_HIST_FULL_MAX);
+  return arr.map(h => { if(toStrip > 0 && h.order){ toStrip--; const c = Object.assign({}, h); delete c.order; delete c.ans; return c; } return h; });
+}
+function simHistLoad(){
+  let hist = []; try{ hist = JSON.parse(localStorage.getItem('ct_sim_historico') || '[]'); }catch(e){}
+  // migração: o último simulado (antes desta versão) tinha o detalhe salvo à parte
+  try{
+    const last = JSON.parse(localStorage.getItem('ct_sim_ultimo_resultado') || 'null');
+    if(last && last.finishedAt && hist.length){
+      const h = hist.filter(x => !x.order && x.track === last.track).find(x => Math.abs(new Date(x.at).getTime() - last.finishedAt) < 60000);
+      if(h){ h.order = last.simOrder; h.ans = last.simAnswers; h.durMin = last.simDurationMin; h.id = h.id || ('m' + last.finishedAt.toString(36)); localStorage.setItem('ct_sim_historico', JSON.stringify(hist)); }
+    }
+  }catch(e){}
+  return hist;
+}
+function simHistSave(hist){ try{ localStorage.setItem('ct_sim_historico', JSON.stringify(simHistTrim(hist))); localStorage.setItem('ct_extras_at', String(Date.now())); }catch(e){} try{ if(typeof pushToCloudDebounced==='function') pushToCloudDebounced(); }catch(e){} }
+function openSimHistReview(id){
+  const h = simHistLoad().find(x => simHistKey(x) === id);
+  if(!h || !h.order) return;
+  simOrder = h.order.filter(q => !!findQuestion(q)); simAnswers = h.ans || {}; simIndex = 0;
+  simName = h.name; simDurationMin = h.durMin || 0;
+  const usedMs = h.timeMs != null ? h.timeMs : 0;
+  simEndAt = Date.now() + Math.max(0, simDurationMin*60*1000 - usedMs);
+  simReviewMeta = h; simIsReview = true; renderSimuladoResults();
+}
+let simReviewMeta = null;
+// Caderno de erros: junta tudo que você errou ou deixou em branco nos simulados desta trilha
+function simErrorBook(track){
+  const hist = simHistLoad().filter(h => h.track === track && h.order);
+  const map = {};
+  hist.forEach(h => {
+    h.order.forEach(id => {
+      const q = findQuestion(id); if(!q) return;
+      const g = (h.ans||{})[id];
+      const e = map[id] || (map[id] = { id, subject:q.subject, wrong:0, blank:0, right:0, last:null, lastOk:null });
+      if(g === q.answer){ e.right++; e.lastOk = h.at; } else { if(g) e.wrong++; else e.blank++; e.last = h.at; }
+    });
+  });
+  const all = Object.values(map).filter(e => e.wrong + e.blank > 0);
+  all.forEach(e => { e.pending = !(e.lastOk && e.last && e.lastOk > e.last); });
+  return all.sort((a,b)=> (b.wrong+b.blank) - (a.wrong+a.blank) || String(b.last).localeCompare(String(a.last)));
+}
+function startErrorBookSimulado(ids){
+  simOrder = ids.slice(); simIndex = 0; simAnswers = {};
+  simName = '📕 Refazer meus erros dos simulados (' + ids.length + ' questões)';
+  simDurationMin = Math.max(10, Math.round(ids.length * 3));
+  simEndAt = Date.now() + simDurationMin*60*1000;
+  renderSimuladoQuestion();
+}
+
 function restoreSimState(st){
   simOrder = st.simOrder.filter(id => !!findQuestion(id)); simAnswers = st.simAnswers || {};
   simIndex = Math.min(st.simIndex || 0, simOrder.length-1); simEndAt = st.simEndAt; simDurationMin = st.simDurationMin; simName = st.simName || 'Simulado';
@@ -3875,9 +3936,9 @@ function renderComparativo(){
 
 
 // ============ BACKUP (exportar/importar todo o progresso) ============
-const _EXTRA_KEYS = ['ct_assuntos_v1','ct_dominio_v1','ct_dominio_meta','ct_cmp_pair'];
+const _EXTRA_KEYS = ['ct_assuntos_v1','ct_dominio_v1','ct_dominio_meta','ct_cmp_pair','ct_sim_historico','ct_sim_ultimo_resultado'];
 function _collectExtras(){ const o={}; _EXTRA_KEYS.forEach(k=>{ try{ const v=localStorage.getItem(k); if(v!=null) o[k]=v; }catch(e){} }); try{ localStorage.setItem('ct_extras_at', String(Date.now())); }catch(e){} return o; }
-function _applyExtras(o){ Object.entries(o||{}).forEach(([k,v])=>{ try{ localStorage.setItem(k,v); }catch(e){} });
+function _applyExtras(o){ Object.entries(o||{}).forEach(([k,v])=>{ try{ if(k==='ct_sim_historico'){ localStorage.setItem(k, JSON.stringify(simHistMerge(JSON.parse(localStorage.getItem(k)||'[]'), JSON.parse(v||'[]')))); } else localStorage.setItem(k,v); }catch(e){} });
   try{ savedTopics=JSON.parse(localStorage.getItem('ct_assuntos_v1')||'[]'); }catch(e){} try{ domState=JSON.parse(localStorage.getItem('ct_dominio_v1')||'{}'); }catch(e){} try{ updateEstudarTab(); }catch(e){} }
 function _siteKeys(){ const ks=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^(ct_|pcal_)/.test(k) && !/^ct_bg_/.test(k)) ks.push(k); } }catch(e){} return ks; }
 function exportBackup(){
@@ -4169,17 +4230,35 @@ function renderSimuladoSetup(){
         </div>
       </div>
     </div>` : '';
-  const hist = (()=>{ try{ return JSON.parse(localStorage.getItem(LS_SIM_HIST_KEY)||'[]').filter(h => h.track === currentTrack).slice(-10).reverse(); }catch(e){ return []; } })();
+  const histAll = simHistLoad().filter(h => h.track === currentTrack).reverse();
+  const hist = histAll.slice(0, 15);
+  const book = simErrorBook(currentTrack);
+  const bookPend = book.filter(e => e.pending);
+  const bookSubj = {}; bookPend.forEach(e => { bookSubj[e.subject] = (bookSubj[e.subject]||0) + 1; });
+  const bookHTML = book.length ? `
+    <div class="card"><div class="card-pad">
+      <div class="eyebrow">📕 Caderno de erros dos simulados</div>
+      <p style="color:var(--bone-dim); font-size:13px; line-height:1.6; margin:6px 0 10px;">
+        ${book.length} questões que você já errou ou deixou em branco em simulados desta trilha. <b style="color:var(--bone)">${bookPend.length} ainda pendentes</b> (as outras você acertou num simulado posterior).
+      </p>
+      ${Object.entries(bookSubj).sort((a,b)=>b[1]-a[1]).map(([s,n]) => `<div class="bb-row"><div class="bb-name" style="flex:1;">${s}</div><div class="bb-count" style="font-weight:700; color:#e05656;">${n}</div></div>`).join('')}
+      <div class="btn-row" style="margin-top:10px;">
+        ${bookPend.length ? `<button class="btn primary" id="bookRedoBtn">Refazer os ${bookPend.length} pendentes (simulado)</button>` : ''}
+        <button class="btn" id="bookRedoAllBtn">Refazer todos (${book.length})</button>
+      </div>
+    </div></div>` : '';
   const lastHTML = (ultimo || hist.length) ? `
     <div class="card"><div class="card-pad">
       <div class="eyebrow">Seus resultados</div>
       ${(!emAndamento && ultimo) ? '<div class="btn-row" style="margin:6px 0 10px;"><button class="btn primary" id="lastSimBtn">Rever correção do último simulado</button></div>' : ''}
-      ${hist.map(h => `<div class="bb-row" style="align-items:center;"><div class="bb-name" style="flex:1;">${h.name}<br><span style="font-size:11px; color:var(--bone-dim); font-family:'IBM Plex Mono',monospace;">${new Date(h.at).toLocaleString('pt-BR')} · ${h.time}</span></div><div class="bb-count" style="font-weight:700; color:${h.pct>=60?'#50b46e':'#e05656'}">${h.correct}/${h.total} (${h.pct}%)</div></div>`).join('')}
+      ${hist.map(h => `<div class="bb-row" style="align-items:center; gap:8px;"><div class="bb-name" style="flex:1;">${h.name}<br><span style="font-size:11px; color:var(--bone-dim); font-family:'IBM Plex Mono',monospace;">${new Date(h.at).toLocaleString('pt-BR')} · ${h.time} · ✅${h.correct} ❌${h.wrong} ⬜${h.blank}</span></div><div class="bb-count" style="font-weight:700; color:${h.pct>=60?'#50b46e':'#e05656'}">${h.correct}/${h.total} (${h.pct}%)</div>${h.order ? `<button class="btn sim-hist-rev" data-hid="${simHistKey(h)}" style="padding:6px 10px; font-size:12px;">Rever</button>` : '<span style="font-size:10px; color:var(--bone-dim); max-width:70px;">só resumo</span>'}</div>`).join('')}
+      ${histAll.length > hist.length ? `<div style="font-size:12px; color:var(--bone-dim); margin-top:6px;">Mostrando os 15 mais recentes de ${histAll.length}.</div>` : ''}
     </div></div>` : '';
 
   app.innerHTML = `
     ${resumeHTML}
     ${lastHTML}
+    ${bookHTML}
     ${namedHTML}
     <div class="card">
       <div class="card-pad">
@@ -4231,6 +4310,9 @@ function renderSimuladoSetup(){
   if(finishSavedBtn) finishSavedBtn.addEventListener('click', ()=>{ restoreSimState(emAndamento); renderSimuladoResults(); });
   const lastBtn = document.getElementById('lastSimBtn');
   if(lastBtn) lastBtn.addEventListener('click', ()=>{ restoreSimState(ultimo); if(ultimo.finishedAt) simEndAt = ultimo.simEndAt + (Date.now() - ultimo.finishedAt); simIsReview = true; renderSimuladoResults(); });
+  app.querySelectorAll('.sim-hist-rev').forEach(b => b.addEventListener('click', ()=> openSimHistReview(b.getAttribute('data-hid'))));
+  const bookBtn = document.getElementById('bookRedoBtn'); if(bookBtn) bookBtn.addEventListener('click', ()=> startErrorBookSimulado(bookPend.map(e=>e.id)));
+  const bookAllBtn = document.getElementById('bookRedoAllBtn'); if(bookAllBtn) bookAllBtn.addEventListener('click', ()=> startErrorBookSimulado(book.map(e=>e.id)));
   document.querySelectorAll('[data-named-prefix]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       startNamedSimulado(btn.getAttribute('data-named-prefix'), parseInt(btn.getAttribute('data-named-tempo'),10));
@@ -4360,6 +4442,7 @@ function renderSimuladoResults(){
   currentView = 'simulado-results';
   clearInterval(simTimerHandle);
   const review = simIsReview; simIsReview = false;
+  const reviewMeta = simReviewMeta; simReviewMeta = null;
 
   let correct = 0, wrong = 0, blank = 0;
   const bySubject = {};
@@ -4383,9 +4466,10 @@ function renderSimuladoResults(){
     // grava as respostas no progresso geral (alimenta "Que errei da última vez" e as estatísticas)
     rows.forEach(r => { if(r.given) recordAnswer(r.item.id, r.given, r.item.answer); });
     try{
-      const hist = JSON.parse(localStorage.getItem(LS_SIM_HIST_KEY) || '[]');
-      hist.push({ track: currentTrack, name: simName || 'Simulado', at: new Date().toISOString(), correct, wrong, blank, total, pct, time: timeUsedStr });
-      localStorage.setItem(LS_SIM_HIST_KEY, JSON.stringify(hist.slice(-50)));
+      const hist = simHistLoad();
+      const nowIso = new Date().toISOString();
+      hist.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), track: currentTrack, name: simName || 'Simulado', at: nowIso, correct, wrong, blank, total, pct, time: timeUsedStr, timeMs: Math.max(0,timeUsedMs), durMin: simDurationMin, order: simOrder.slice(), ans: Object.assign({}, simAnswers) });
+      simHistSave(hist);
       localStorage.setItem(LS_SIM_LAST_KEY, JSON.stringify({ track: currentTrack, simName, simOrder, simAnswers, simEndAt, simDurationMin, finishedAt: Date.now() }));
     }catch(e){}
     clearSimState();
@@ -4433,7 +4517,7 @@ function renderSimuladoResults(){
           <div class="stat-box"><div class="num" style="color:#e05656">${wrong}</div><div class="lbl">Erros</div></div>
           <div class="stat-box"><div class="num" style="color:#c9a227">${blank}</div><div class="lbl">Em branco</div></div>
         </div>
-        <p style="color:var(--bone-dim); font-size:13px;">Tempo utilizado: ${timeUsedStr} de ${simDurationMin} min.${review ? '' : ' Resultado salvo no histórico e as respostas foram registradas nas suas estatísticas.'}</p>
+        <p style="color:var(--bone-dim); font-size:13px;">Tempo utilizado: ${timeUsedStr} de ${simDurationMin} min.${reviewMeta ? ' Feito em ' + new Date(reviewMeta.at).toLocaleString('pt-BR') + ' (revisão do histórico).' : ''}${review ? '' : ' ✅ Simulado salvo no histórico (com todas as suas respostas) e no caderno de erros.'}</p>
       </div>
     </div>
     <div class="card">
