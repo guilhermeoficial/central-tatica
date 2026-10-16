@@ -2489,29 +2489,53 @@ const EXAM_DATES = {
   PF:    { label: "PF 🎯",               date: null, status: "Sem edital — novo concurso sinalizado para 2027" }
 };
 
+// Detalhes de turno/local das provas policiais (quando conhecidos)
+const EXAM_EXTRA = {
+  GCMNF: { turno: "manhã (8h–12h)", local: "Nísia Floresta/RN", banca: "IDIB" },
+  GCMTG: { banca: "COMPERVE/UFRN", local: "Tangará/RN" },
+  ATGB:  { banca: "CPCON/UEPB", local: "Guarabira/PB" }
+};
+// Concursos fora da área policial que o usuário também vai fazer (só agenda, sem trilha de estudo)
+const OUTROS_CONCURSOS = [
+  { label: "Câmara de Mossoró: Analista de TI", date: "2026-12-06", turno: "tarde (nível superior; horário exato no cartão)", local: "somente em Mossoró/RN", banca: "Comperve/UFRN", obs: "Inscrições de 13/10 a 12/11/2026" },
+  { label: "Transpetro: Engenheiro", date: "2026-12-06", turno: "a confirmar (cartão de confirmação sai em 01/12)", local: "capital escolhida na inscrição", banca: "Cesgranrio", obs: "Inscrições encerradas em 21/09/2026" },
+  { label: "Prefeitura de Campina Grande: Engenheiro Eletricista", date: "2027-01-09", turno: "sábado à tarde (portões 13h–14h, 3 horas de prova)", local: "Campina Grande/PB", banca: "Idecan", obs: "Locais de prova divulgados em 30/12/2026" }
+];
+const CONFLITO_NOTAS = {
+  "2026-12-06": "⚠️ <b>CONFLITO SÉRIO em 06/12:</b> três provas no mesmo dia. GCM-Nísia é de manhã em Nísia Floresta; a Câmara de Mossoró é à tarde e só em Mossoró (≈280 km, cerca de 4 h de estrada): sair da prova da GCM às 12h e chegar a Mossoró antes de os portões fecharem é praticamente impossível. A Transpetro (Cesgranrio) ainda não divulgou o turno: se for de manhã, colide com a GCM; se for à tarde, colide com Mossoró. Na prática, você terá de escolher no máximo duas, e só se a Transpetro for à tarde em Natal (GCM de manhã + Transpetro à tarde)."
+};
+
 function renderExamDatesPanel(){
   const panel = document.getElementById('examDatesPanel');
   if(!panel) return;
   const today = new Date().toISOString().slice(0,10);
-
-  const withDate = [];
+  const all = [];
   const withoutDate = [];
   Object.entries(EXAM_DATES).forEach(([track, info])=>{
-    if(info.date) withDate.push({ track, ...info });
-    else withoutDate.push({ track, ...info });
+    const ex = Object.assign({ track, policial:true }, info, EXAM_EXTRA[track]||{});
+    if(info.date) all.push(ex); else withoutDate.push(ex);
   });
-
-  // futuras primeiro (ordem crescente), depois as ja passadas (mais recente primeiro)
-  const future = withDate.filter(d => d.date >= today).sort((a,b)=> a.date.localeCompare(b.date));
-  const past = withDate.filter(d => d.date < today).sort((a,b)=> b.date.localeCompare(a.date));
-
+  OUTROS_CONCURSOS.forEach(o => all.push(Object.assign({ policial:false }, o)));
+  const future = all.filter(d => d.date >= today).sort((a,b)=> a.date.localeCompare(b.date));
+  const past = all.filter(d => d.date < today).sort((a,b)=> b.date.localeCompare(a.date));
   const fmt = (iso) => { const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; };
-
+  const wd = (iso) => ['dom','seg','ter','qua','qui','sex','sáb'][new Date(iso+'T12:00:00').getDay()];
+  const byDate = {}; future.forEach(d => (byDate[d.date] = byDate[d.date] || []).push(d));
+  // conflito também para provas em dias seguidos (sábado/domingo) em cidades diferentes não é bloqueante; marcamos só o mesmo dia
   let html = '<div style="font-weight:700; color:var(--gold-bright); margin-bottom:4px;">📅 PRÓXIMAS PROVAS (mais perto primeiro)</div>';
-  future.forEach((d, i)=>{
-    const isCurrent = d.track === currentTrack;
-    html += `<div style="${isCurrent ? 'color:var(--gold-bright); font-weight:700;' : ''}">${i+1}º — ${d.label}: ${fmt(d.date)}${isCurrent ? ' ← você está aqui' : ''}</div>`;
+  let i = 0;
+  Object.keys(byDate).sort().forEach(date => {
+    const list = byDate[date]; const conflict = list.length > 1;
+    if(conflict) html += `<div style="margin:6px 0 2px; padding:6px 8px; border-left:3px solid #E5484D; background:rgba(229,72,77,.08); border-radius:4px;">`;
+    list.forEach(d => {
+      i++;
+      const isCurrent = d.policial && d.track === currentTrack;
+      const det = [d.turno, d.local, d.banca].filter(Boolean).join(' · ');
+      html += `<div style="${isCurrent ? 'color:var(--gold-bright); font-weight:700;' : ''}">${i}º — ${d.policial ? '' : '💼 '}${d.label}: ${fmt(d.date)} (${wd(d.date)})${isCurrent ? ' ← você está aqui' : ''}${det ? `<div style="font-size:.85em; opacity:.7; margin-left:14px;">${det}${d.obs ? ' · ' + d.obs : ''}</div>` : ''}</div>`;
+    });
+    if(conflict) html += `<div style="margin-top:4px; font-size:.9em; color:#FF8A8E;">${CONFLITO_NOTAS[date] || '⚠️ Duas ou mais provas no mesmo dia: confira turnos e cidades.'}</div></div>`;
   });
+  html += '<div style="margin-top:6px; font-size:.85em; opacity:.6;">💼 = concurso fora da área policial (só agenda, sem trilha de estudo).</div>';
   if(withoutDate.length){
     html += '<div style="margin-top:6px; opacity:0.75;">Sem data definida: ' +
       withoutDate.map(d => `${d.label} (${d.status})`).join(' · ') + '</div>';
