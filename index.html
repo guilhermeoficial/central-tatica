@@ -500,7 +500,7 @@ table.cmp td.sub small{ display:block; font-weight:400; color:var(--bone-dim); f
 <div id="concursoInfo"></div>
 <main id="app"></main>
 
-<footer class="foot">☠ Versão 17/10/2026 (flashcards) · Material de estudo independente · progresso salvo neste navegador e, se ativada, na nuvem · <kbd style="border:1px solid #333;border-radius:4px;padding:0 4px">Ctrl K</kbd> busca rápida</footer>
+<footer class="foot">☠ Versão 18/10/2026 (flashcards por matéria) · Material de estudo independente · progresso salvo neste navegador e, se ativada, na nuvem · <kbd style="border:1px solid #333;border-radius:4px;padding:0 4px">Ctrl K</kbd> busca rápida</footer>
 
 <script>
 
@@ -5411,6 +5411,11 @@ setTimeout(process, 300);
 .fc-modes button,.fc-chips button{border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--bone-soft,var(--bone));border-radius:999px;padding:6px 11px;font-size:12px;cursor:pointer}
 .fc-modes button.sel,.fc-chips button.sel{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700}
 .fc-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}.fc-chips button{flex:0 0 auto}
+.fc-mat{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:10px 0 6px}
+.fc-mat button{border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--bone);border-radius:14px;padding:12px 8px;font-size:15px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.fc-mat button small{font-size:11px;font-weight:500;color:var(--bone-dim)}
+.fc-mat button.sel{background:var(--gold);color:#111;border-color:var(--gold)}
+.fc-mat button.sel small{color:#222}
 .fc-weak{display:block;font-size:12px;color:var(--bone-dim);margin-top:4px}
 .fc-wrap{max-width:640px;margin:0 auto}
 .fc-top{display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--bone-dim)}
@@ -5453,8 +5458,11 @@ try{ if(typeof _EXTRA_KEYS!=='undefined' && !_EXTRA_KEYS.includes(KEY)) _EXTRA_K
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){ return {}; } }
 function save(st){ try{ localStorage.setItem(KEY, JSON.stringify(st)); localStorage.setItem('ct_extras_at', String(Date.now())); }catch(e){} try{ if(typeof pushToCloudDebounced==='function') pushToCloudDebounced(); }catch(e){} }
-let S = { tema:'', mode:'cards', queue:[], i:0, flipped:false, sessionOk:0, sessionBad:0, onlyWeak:false };
-function deck(){ return DECKS[currentTrack] || []; }
+let S = { materia:'', tema:'', mode:'cards', queue:[], i:0, flipped:false, sessionOk:0, sessionBad:0, onlyWeak:false };
+function matOf(c){ return c.m || (/Portugu/.test(c.t)?'Português':/Inform/.test(c.t)?'Informática':'Trânsito'); }
+function fullDeck(){ return DECKS[currentTrack] || []; }
+function materias(){ return [...new Set(fullDeck().map(matOf))]; }
+function deck(){ const d=fullDeck(); if(!S.materia || !materias().includes(S.materia)) S.materia=materias()[0]||''; return d.filter(c=>matOf(c)===S.materia); }
 function box(st,id){ return (st[id]&&st[id].b)||0; } // 0 = nunca visto, 1 = errei, 2 = quase, 3 = sabia, 4-5 = domina
 function buildQueue(){
   const st=load(); let list=deck().filter(c=>!S.tema||c.t===S.tema);
@@ -5472,7 +5480,8 @@ function header(){
   return `<div class="card"><div class="card-pad">
     <div class="eyebrow">🃏 Revisão do edital em flashcards</div>
     <h2 class="section-title" style="margin-bottom:4px">${esc((TRACK_LABELS[currentTrack]||{}).title||currentTrack).replace('Central Tática — ','')}</h2>
-    <p style="color:var(--bone-dim);font-size:13px;line-height:1.55;margin:4px 0 10px">${d.length} cartões cobrindo o edital. Toque no cartão para virar e diga se sabia. O que você erra volta primeiro. Atalhos: <b>espaço</b> vira · <b>1</b> errei · <b>2</b> quase · <b>3</b> sabia.</p>
+    <div class="fc-mat">${materias().map(m=>{const n=fullDeck().filter(c=>matOf(c)===m).length; const ic=m==='Trânsito'?'🚦':m==='Português'?'📝':m==='Informática'?'💻':'📚'; return `<button data-mat="${esc(m)}" class="${m===S.materia?'sel':''}">${ic} ${esc(m)}<small>${n} cartões</small></button>`}).join('')}</div>
+    <p style="color:var(--bone-dim);font-size:13px;line-height:1.55;margin:4px 0 10px">${d.length} cartões de <b>${esc(S.materia)}</b>. Toque no cartão para virar e diga se sabia. O que você erra volta primeiro. Atalhos: <b>espaço</b> vira · <b>1</b> errei · <b>2</b> quase · <b>3</b> sabia.</p>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--bone-dim);font-family:'IBM Plex Mono',monospace"><span>Dominados ${s.dom}/${s.total}</span><span>Vistos ${s.seen}/${s.total}</span></div>
     ${bar(s.total?Math.round(s.dom/s.total*100):0,'#50b46e')}
     <div class="fc-modes"><button data-m="cards" class="${S.mode==='cards'?'sel':''}">🃏 Flashcards</button><button data-m="resumo" class="${S.mode==='resumo'?'sel':''}">📄 Resumo (lista)</button><button data-m="temas" class="${S.mode==='temas'?'sel':''}">📊 Por tema</button></div>
@@ -5521,7 +5530,7 @@ function temasView(){
 }
 function render(keepQueue){
   currentView='flash'; tabsNav.style.display='flex'; setActiveTab('flash');
-  if(!deck().length){
+  if(!fullDeck().length){
     app.innerHTML=`<div class="card"><div class="card-pad"><div class="eyebrow">🃏 Revisão em flashcards</div><h2 class="section-title">Ainda não há deck para esta trilha</h2><p style="color:var(--bone-dim);font-size:13px">O primeiro deck feito foi o do <b>Agente de Trânsito de Guarabira</b>. Os das outras trilhas (PCPE, PPPE, PMPE…) vêm em seguida.</p><div class="btn-row"><button class="btn primary" id="fcGoAt">Abrir o deck de Guarabira</button></div></div></div>`;
     document.getElementById('fcGoAt').onclick=()=>{ setTrack('ATGB'); setTimeout(()=>render(),50); };
     return;
@@ -5529,7 +5538,9 @@ function render(keepQueue){
   if(!keepQueue) buildQueue();
   app.innerHTML = header() + (S.mode==='cards'?cardView():S.mode==='resumo'?resumoView():temasView());
   try{ renderMath(app); }catch(e){}
+  try{ const top=app.querySelector(keepQueue?'.fc-wrap':'.card'); if(top){ const r=top.getBoundingClientRect(); if(!keepQueue || r.top<60 || r.top>window.innerHeight*0.5) window.scrollTo({top: window.scrollY + r.top - 110, behavior: keepQueue?'smooth':'auto'}); } }catch(e){}
   app.querySelectorAll('.fc-modes button').forEach(b=>b.onclick=()=>{ S.mode=b.dataset.m; render(); });
+  app.querySelectorAll('.fc-mat button').forEach(b=>b.onclick=()=>{ S.materia=b.dataset.mat; S.tema=''; render(); });
   app.querySelectorAll('.fc-chips button').forEach(b=>b.onclick=()=>{ S.tema=b.dataset.t; if(S.mode==='temas') S.mode='cards'; render(); });
   const w=document.getElementById('fcWeak'); if(w) w.onchange=()=>{ S.onlyWeak=w.checked; render(); };
   const card=document.getElementById('fcCard'); if(card) card.onclick=()=>{ S.flipped=!S.flipped; card.classList.toggle('flip',S.flipped); app.querySelector('.fc-actions').classList.toggle('off',!S.flipped); };
@@ -5556,8 +5567,8 @@ document.addEventListener('keydown',e=>{
 window.renderFlash=render;
 // atalho bem visível no Painel e no Edital
 function promo(){
-  try{ if(!deck().length || !app || document.getElementById('fcPromo')) return;
-    const st=stats(deck()); const d=document.createElement('div');
+  try{ if(!fullDeck().length || !app || document.getElementById('fcPromo')) return;
+    const st=stats(fullDeck()); const d=document.createElement('div');
     d.id='fcPromo'; d.className='card'; d.style.cssText='border:1px solid var(--gold);cursor:pointer';
     d.innerHTML=`<div class="card-pad" style="display:flex;align-items:center;gap:12px"><div style="font-size:34px">🃏</div><div style="flex:1"><div class="eyebrow" style="color:var(--gold)">Novo · Revisão do edital</div><div style="font-weight:800;font-size:16px;color:var(--bone)">Flashcards do edital: ${st.total} cartões</div><div style="font-size:12px;color:var(--bone-dim)">Dominados ${st.dom}/${st.total} · toque para revisar</div></div><div style="font-size:22px;color:var(--gold)">›</div></div>`;
     d.onclick=()=>render(); app.insertBefore(d, app.firstChild);
