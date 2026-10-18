@@ -500,7 +500,7 @@ table.cmp td.sub small{ display:block; font-weight:400; color:var(--bone-dim); f
 <div id="concursoInfo"></div>
 <main id="app"></main>
 
-<footer class="foot">☠ Material de estudo independente · progresso salvo neste navegador e, se ativada, na nuvem · <kbd style="border:1px solid #333;border-radius:4px;padding:0 4px">Ctrl K</kbd> busca rápida</footer>
+<footer class="foot">☠ Versão 17/10/2026 (flashcards) · Material de estudo independente · progresso salvo neste navegador e, se ativada, na nuvem · <kbd style="border:1px solid #333;border-radius:4px;padding:0 4px">Ctrl K</kbd> busca rápida</footer>
 
 <script>
 
@@ -5554,6 +5554,18 @@ document.addEventListener('keydown',e=>{
   else if(S.flipped && ['1','2','3'].includes(e.key)){ e.preventDefault(); rate(+e.key); }
 });
 window.renderFlash=render;
+// atalho bem visível no Painel e no Edital
+function promo(){
+  try{ if(!deck().length || !app || document.getElementById('fcPromo')) return;
+    const st=stats(deck()); const d=document.createElement('div');
+    d.id='fcPromo'; d.className='card'; d.style.cssText='border:1px solid var(--gold);cursor:pointer';
+    d.innerHTML=`<div class="card-pad" style="display:flex;align-items:center;gap:12px"><div style="font-size:34px">🃏</div><div style="flex:1"><div class="eyebrow" style="color:var(--gold)">Novo · Revisão do edital</div><div style="font-weight:800;font-size:16px;color:var(--bone)">Flashcards do edital: ${st.total} cartões</div><div style="font-size:12px;color:var(--bone-dim)">Dominados ${st.dom}/${st.total} · toque para revisar</div></div><div style="font-size:22px;color:var(--gold)">›</div></div>`;
+    d.onclick=()=>render(); app.insertBefore(d, app.firstChild);
+  }catch(e){}
+}
+['renderPainel','renderEdital'].forEach(fn=>{ const orig=window[fn]; if(typeof orig==='function'){ window[fn]=function(){ const r=orig.apply(this,arguments); setTimeout(promo,0); return r; }; } });
+setTimeout(promo,400);
+try{ new MutationObserver(()=>{ if((currentView==='painel'||currentView==='edital') && !document.getElementById('fcPromo')) promo(); }).observe(app,{childList:true}); }catch(e){}
 const tb=document.getElementById('tabsNav');
 if(tb){ const b=document.createElement('button'); b.dataset.tab='flash'; b.textContent='🃏 Revisão'; const ref=tb.querySelector('[data-tab="dashboard"]'); tb.insertBefore(b, ref||null);
   tb.addEventListener('click',e=>{ const x=e.target.closest('button[data-tab="flash"]'); if(x) render(); }); }
