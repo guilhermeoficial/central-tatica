@@ -5584,5 +5584,17 @@ if(tb){ const b=document.createElement('button'); b.dataset.tab='flash'; b.textC
   tb.addEventListener('click',e=>{ const x=e.target.closest('button[data-tab="flash"]'); if(x) render(); }); }
 })();
 </script>
+<script id="gb26import">(function(){try{
+ if(localStorage.getItem('ct_gb26_imported'))return;
+ var ans={"cpcongb26-1": "D", "cpcongb26-2": "C", "cpcongb26-3": "B", "cpcongb26-4": "A", "cpcongb26-5": "A", "cpcongb26-6": "C", "cpcongb26-7": "C", "cpcongb26-8": "E", "cpcongb26-9": "B", "cpcongb26-10": "A", "cpcongb26-11": "D", "cpcongb26-12": "E", "cpcongb26-13": "D", "cpcongb26-14": "B", "cpcongb26-15": "E", "cpcongb26-16": "A", "cpcongb26-17": "D", "cpcongb26-18": "A", "cpcongb26-19": "D", "cpcongb26-20": "B", "cpcongb26-21": "C", "cpcongb26-22": "E", "cpcongb26-23": "B", "cpcongb26-24": "B", "cpcongb26-25": "A", "cpcongb26-26": "D", "cpcongb26-27": "A", "cpcongb26-28": "C", "cpcongb26-29": "B", "cpcongb26-30": "E", "cpcongb26-31": "C", "cpcongb26-32": "B", "cpcongb26-33": "B", "cpcongb26-34": "B", "cpcongb26-35": "B", "cpcongb26-36": "A", "cpcongb26-37": "E", "cpcongb26-38": "B", "cpcongb26-39": "B", "cpcongb26-40": "A"}; var order=Object.keys(ans);
+ var hist=(typeof simHistLoad==='function')?simHistLoad():JSON.parse(localStorage.getItem('ct_sim_historico')||'[]');
+ if(!hist.some(function(h){return h.id==='gb26real'})){
+  var c=0,w=0; order.forEach(function(id){var q=findQuestion(id); if(q&&q.answer===ans[id])c++; else w++;});
+  hist.push({id:'gb26real',track:'ATGB',name:'🎯 PROVA REAL Guarabira 18/10/2026 — minhas respostas (rascunho)',at:'2026-10-18T17:00:00.000Z',correct:c,wrong:w,blank:0,total:40,pct:Math.round(c/40*100),time:'04:00:00',timeMs:14400000,durMin:240,order:order,ans:ans});
+  if(typeof simHistSave==='function') simHistSave(hist); else localStorage.setItem('ct_sim_historico',JSON.stringify(hist));
+ }
+ try{ order.forEach(function(id){var q=findQuestion(id); if(q&&typeof recordAnswer==='function') recordAnswer(id, ans[id], q.answer);}); }catch(e){}
+ localStorage.setItem('ct_gb26_imported','1');
+}catch(e){}})();</script>
 </body>
 </html>
