@@ -4047,8 +4047,11 @@ function renderSimuladoSetup(){
         </div>
       </div>
     </div>` : '';
-  const histAll = simHistLoad().filter(h => h.track === currentTrack).reverse();
-  const hist = histAll.slice(0, 15);
+  const histEvery = simHistLoad().slice().reverse();
+  const histMine = histEvery.filter(h => h.track === currentTrack);
+  const otherN = histEvery.length - histMine.length;
+  const histAll = window.CT_HIST_ALL ? histEvery : histMine;
+  const hist = window.CT_HIST_SHOWALL ? histAll : histAll.slice(0, 15);
   const book = simErrorBook(currentTrack);
   const bookPend = book.filter(e => e.pending);
   const bookSubj = {}; bookPend.forEach(e => { bookSubj[e.subject] = (bookSubj[e.subject]||0) + 1; });
@@ -4065,12 +4068,14 @@ function renderSimuladoSetup(){
         <button class="btn" onclick="window.openErrorFlash&&window.openErrorFlash()">🃏 Revisar meus erros em flashcards</button>
       </div>
     </div></div>` : '';
-  const lastHTML = (ultimo || hist.length) ? `
+  const lastHTML = (ultimo || hist.length || otherN) ? `
     <div class="card"><div class="card-pad">
       <div class="eyebrow">Seus resultados</div>
       ${(!emAndamento && ultimo) ? '<div class="btn-row" style="margin:6px 0 10px;"><button class="btn primary" id="lastSimBtn">Rever correção do último simulado</button></div>' : ''}
-      ${hist.map(h => `<div class="bb-row" style="align-items:center; gap:8px;"><div class="bb-name" style="flex:1;">${h.name}<br><span style="font-size:11px; color:var(--bone-dim); font-family:'IBM Plex Mono',monospace;">${new Date(h.at).toLocaleString('pt-BR')} · ${h.time} · ✅${h.correct} ❌${h.wrong} ⬜${h.blank}</span></div><div class="bb-count" style="font-weight:700; color:${h.pct>=60?'#50b46e':'#e05656'}">${h.correct}/${h.total} (${h.pct}%)</div>${h.order ? `<button class="btn sim-hist-rev" data-hid="${simHistKey(h)}" style="padding:6px 10px; font-size:12px;">Rever</button>` : '<span style="font-size:10px; color:var(--bone-dim); max-width:70px;">só resumo</span>'}</div>`).join('')}
-      ${histAll.length > hist.length ? `<div style="font-size:12px; color:var(--bone-dim); margin-top:6px;">Mostrando os 15 mais recentes de ${histAll.length}.</div>` : ''}
+      ${hist.map(h => `<div class="bb-row" style="align-items:center; gap:8px;"><div class="bb-name" style="flex:1;">${(window.CT_HIST_ALL && h.track!==currentTrack) ? `<span style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:1px 5px;margin-right:4px;color:var(--gold)">${(typeof CMP_LABEL!=='undefined'&&CMP_LABEL[h.track])||h.track}</span>` : ''}${h.name}<br><span style="font-size:11px; color:var(--bone-dim); font-family:'IBM Plex Mono',monospace;">${new Date(h.at).toLocaleString('pt-BR')} · ${h.time} · ✅${h.correct} ❌${h.wrong} ⬜${h.blank}</span></div><div class="bb-count" style="font-weight:700; color:${h.pct>=60?'#50b46e':'#e05656'}">${h.correct}/${h.total} (${h.pct}%)</div>${h.order ? `<button class="btn sim-hist-rev" data-hid="${simHistKey(h)}" style="padding:6px 10px; font-size:12px;">Rever</button>` : '<span style="font-size:10px; color:var(--bone-dim); max-width:70px;">só resumo</span>'}</div>`).join('')}
+      ${histAll.length > hist.length ? `<div style="font-size:12px; color:var(--bone-dim); margin-top:6px;">Mostrando os 15 mais recentes de ${histAll.length}. <button class="btn" style="padding:4px 10px;font-size:11px" onclick="window.CT_HIST_SHOWALL=true;renderSimuladoSetup()">Ver todos</button></div>` : ''}
+      ${(otherN>0 && !window.CT_HIST_ALL) ? `<div style="font-size:12px; color:var(--bone-dim); margin-top:6px;">Você tem mais <b style="color:var(--bone)">${otherN}</b> simulado(s) feitos em outras trilhas. <button class="btn" style="padding:4px 10px;font-size:11px" onclick="window.CT_HIST_ALL=true;renderSimuladoSetup()">Mostrar de todas as trilhas</button></div>` : ''}
+      ${window.CT_HIST_ALL ? `<div style="margin-top:6px"><button class="btn" style="padding:4px 10px;font-size:11px" onclick="window.CT_HIST_ALL=false;renderSimuladoSetup()">Só desta trilha</button></div>` : ''}
     </div></div>` : '';
 
   app.innerHTML = `
@@ -6039,6 +6044,128 @@ function renderHist(){
 
 window.renderRedacao = render;
 window.REDUI = {render, corrigir, promptTexto};
+})();
+
+</script>
+<script id="histguard">
+/* ===== Central Tática · Proteção do histórico de simulados =====
+   1) Espelha o histórico no IndexedDB (cota muito maior que o localStorage);
+   2) avisa na tela se o navegador recusar a gravação (antes falhava em silêncio);
+   3) pede armazenamento persistente (evita limpeza automática do navegador);
+   4) restaurar backup SOMA o histórico em vez de substituir;
+   5) painel "Onde estão seus simulados" com contagem, diagnóstico e backup só dos simulados. */
+(function(){
+'use strict';
+const K='ct_sim_historico', KL='ct_sim_ultimo_resultado';
+let MEM=[]; let DB=null; let lsFail=false;
+function idb(){ return new Promise(res=>{ try{ if(DB) return res(DB); const r=indexedDB.open('central_tatica',1); r.onupgradeneeded=()=>{ try{ r.result.createObjectStore('kv'); }catch(e){} }; r.onsuccess=()=>{ DB=r.result; res(DB); }; r.onerror=()=>res(null); r.onblocked=()=>res(null); }catch(e){ res(null); } }); }
+function idbGet(k){ return idb().then(db=>new Promise(res=>{ if(!db) return res(null); try{ const q=db.transaction('kv','readonly').objectStore('kv').get(k); q.onsuccess=()=>res(q.result==null?null:q.result); q.onerror=()=>res(null); }catch(e){ res(null); } })); }
+function idbSet(k,v){ return idb().then(db=>new Promise(res=>{ if(!db) return res(false); try{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=()=>res(true); t.onerror=()=>res(false); }catch(e){ res(false); } })); }
+function lsHist(){ try{ return JSON.parse(localStorage.getItem(K)||'[]'); }catch(e){ return []; } }
+function toast(msg,err){ try{ const d=document.createElement('div'); d.textContent=msg; d.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:92vw;z-index:99999;padding:10px 14px;border-radius:12px;font:600 13px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.45);'+(err?'background:#7f1d1d;color:#fff':'background:#D4AF37;color:#111'); document.body.appendChild(d); setTimeout(()=>d.remove(), err?7000:3000); }catch(e){} }
+
+const origLoad = window.simHistLoad;   // mantém a migração antiga
+// Leitura: soma localStorage + cópia do IndexedDB (memória)
+window.simHistLoad = simHistLoad = function(){
+  let a=[]; try{ a = origLoad ? origLoad() : lsHist(); }catch(e){ a=lsHist(); }
+  return MEM.length ? simHistMerge(a, MEM) : a;
+};
+// Gravação: localStorage (avisa se falhar) + IndexedDB + nuvem
+window.simHistSave = simHistSave = function(hist){
+  const trimmed = simHistTrim(hist);
+  MEM = simHistMerge(MEM, hist);
+  try{ localStorage.setItem(K, JSON.stringify(trimmed)); localStorage.setItem('ct_extras_at', String(Date.now())); lsFail=false; }
+  catch(e){ lsFail=true; toast('⚠️ O navegador recusou gravar o histórico (armazenamento cheio). Ele foi guardado no banco interno; faça um backup em Simulado › Onde estão seus simulados.', true); }
+  idbSet(K, MEM).then(ok=>{ if(!ok && lsFail) toast('❌ Não foi possível salvar este simulado neste navegador. Baixe o backup agora.', true); });
+  try{ if(typeof pushToCloudDebounced==='function') pushToCloudDebounced(); }catch(e){}
+};
+// Ao abrir o site: recupera a cópia interna e devolve ao localStorage o que tiver sumido de lá
+idbGet(K).then(v=>{
+  const ls = lsHist();
+  MEM = simHistMerge(Array.isArray(v)?v:[], ls);
+  const lost = MEM.length - ls.length;
+  if(lost>0){ try{ localStorage.setItem(K, JSON.stringify(simHistTrim(MEM))); }catch(e){} toast(`💾 ${lost} simulado(s) recuperado(s) da cópia interna do navegador.`); try{ if(String(currentView||'').startsWith('simulado-setup')) renderSimuladoSetup(); }catch(e){} }
+  idbSet(K, MEM);
+});
+// Último resultado também ganha cópia
+try{ window.addEventListener('beforeunload', ()=>{ try{ const l=localStorage.getItem(KL); if(l) idbSet(KL,l); }catch(e){} }); }catch(e){}
+// Armazenamento persistente (o navegador deixa de apagar sozinho)
+let persisted=null;
+try{ if(navigator.storage && navigator.storage.persist){ navigator.storage.persisted().then(p=>{ persisted=p; if(!p) navigator.storage.persist().then(x=>{ persisted=x; }); }); } }catch(e){}
+
+// Restaurar backup: soma o histórico de simulados em vez de substituir
+window.importBackup = importBackup = function(file){
+  const fr=new FileReader();
+  fr.onload=()=>{ try{
+    const data=JSON.parse(fr.result); if(!data) throw new Error('arquivo inválido');
+    if(data.kind==='ct-simulados' && Array.isArray(data.hist)){
+      const before=simHistLoad().length; simHistSave(simHistMerge(simHistLoad(), data.hist)); const after=simHistLoad().length;
+      alert(`Backup de simulados importado: ${after-before} simulado(s) novo(s). Nada que já estava aqui foi apagado.`); try{ renderSimuladoSetup(); }catch(e){} return;
+    }
+    if(!data.keys) throw new Error('arquivo inválido');
+    const n=Object.keys(data.keys).length;
+    if(!confirm(`Restaurar o backup de ${new Date(data.exportedAt).toLocaleString('pt-BR')} (${n} itens)? O histórico de simulados será SOMADO ao atual; os demais dados deste navegador serão substituídos pelos do backup.`)) return;
+    Object.entries(data.keys).forEach(([k,v])=>{ try{
+      if(k===K){ const merged=simHistMerge(simHistLoad(), JSON.parse(v||'[]')); MEM=merged; localStorage.setItem(K, JSON.stringify(simHistTrim(merged))); idbSet(K, merged); }
+      else localStorage.setItem(k,v);
+    }catch(e){} });
+    alert('Backup restaurado! A página será recarregada.'); location.reload();
+  }catch(e){ alert('Não foi possível ler este arquivo de backup: '+e.message); } };
+  fr.readAsText(file);
+};
+function exportSims(){
+  const hist=simHistLoad(); const d=new Date();
+  const blob=new Blob([JSON.stringify({kind:'ct-simulados',version:1,exportedAt:d.toISOString(),hist})],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`central-tatica-simulados-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+  try{ localStorage.setItem('ct_last_backup', String(Date.now())); }catch(e){} try{ renderBackupBar(); }catch(e){}
+}
+function lsUsageKB(){ let n=0; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); n+=(k.length+(localStorage.getItem(k)||'').length)*2; } }catch(e){} return Math.round(n/1024); }
+function panel(){
+  const hist=simHistLoad(); const full=hist.filter(h=>h.order).length;
+  const byTrack={}; hist.forEach(h=>byTrack[h.track]=(byTrack[h.track]||0)+1);
+  const last=hist.length? new Date(hist[hist.length-1].at).toLocaleString('pt-BR') : '—';
+  const inFrame=(()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
+  const sync=(typeof syncEnabled!=='undefined' && syncEnabled && typeof syncCode!=='undefined' && syncCode);
+  const kb=lsUsageKB();
+  const probs=[];
+  if(inFrame) probs.push('Você está numa <b>pré-visualização</b> (dentro de outro app). O que você faz aqui pode ser apagado ao fechar. Use sempre o endereço do site publicado, no mesmo navegador.');
+  if(lsFail) probs.push('O navegador recusou gravar no armazenamento principal (cheio). O histórico está no banco interno; faça o backup.');
+  if(kb>4300) probs.push(`O armazenamento do site está quase cheio (${kb} KB de cerca de 5.000 KB). Uma imagem de fundo personalizada ocupa muito espaço: remova-a no botão de fundo da trilha.`);
+  if(!sync) probs.push('A sincronização com a nuvem está <b>desligada</b>: se você usa celular e computador, cada aparelho tem o seu próprio histórico.');
+  if(persisted===false) probs.push('O navegador não concedeu armazenamento persistente; ele pode limpar dados de sites pouco usados. Mantenha backups.');
+  const div=document.createElement('div'); div.className='card'; div.id='histGuardCard';
+  div.innerHTML=`<div class="card-pad"><div class="eyebrow">💾 Onde estão seus simulados</div>
+   <p style="color:var(--bone-dim);font-size:13px;line-height:1.6;margin:6px 0 8px">Este navegador guarda <b style="color:var(--bone)">${hist.length} simulado(s)</b> (${full} com correção completa, questão a questão). Último salvo: ${last}.<br>${Object.entries(byTrack).map(([t,n])=>`${(typeof CMP_LABEL!=='undefined'&&CMP_LABEL[t])||t}: ${n}`).join(' · ')||''}</p>
+   <p style="color:var(--bone-dim);font-size:12px;line-height:1.6;margin:0 0 8px">Cada simulado é gravado em três lugares: armazenamento do navegador, cópia interna (IndexedDB) e nuvem${sync?' (ativa)':' (desligada)'}. ${probs.length?'':'✅ Nenhum problema detectado.'}</p>
+   ${probs.length?`<ul style="margin:0 0 8px 0;padding-left:18px;font-size:12.5px;line-height:1.55;color:#e0a050">${probs.map(p=>`<li>${p}</li>`).join('')}</ul>`:''}
+   <div class="btn-row"><button class="btn" id="hgExp">⬇️ Baixar backup dos simulados</button><button class="btn" id="hgImp">⬆️ Importar backup (soma, não apaga)</button><input type="file" id="hgFile" accept=".json,application/json" hidden></div></div>`;
+  div.querySelector('#hgExp').onclick=exportSims;
+  div.querySelector('#hgImp').onclick=()=>div.querySelector('#hgFile').click();
+  div.querySelector('#hgFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(f) importBackup(f); e.target.value=''; };
+  return div;
+}
+const origSetup = window.renderSimuladoSetup;
+if(typeof origSetup==='function'){
+  window.renderSimuladoSetup = renderSimuladoSetup = function(){
+    const r=origSetup.apply(this, arguments);
+    try{ const app=document.getElementById('app'); if(app && !document.getElementById('histGuardCard')){ const cards=app.querySelectorAll(':scope > .card'); const ref=cards.length?cards[cards.length-1]:null; const p=panel(); if(ref && ref.nextSibling) app.insertBefore(p, ref.nextSibling); else app.appendChild(p); } }catch(e){ console.error(e); }
+    return r;
+  };
+}
+// Depois de terminar um simulado, confirma na tela que ficou salvo
+const origRes = window.renderSimuladoResults;
+if(typeof origRes==='function'){
+  window.renderSimuladoResults = renderSimuladoResults = function(){
+    const wasReview = (typeof simIsReview!=='undefined' && simIsReview);
+    const n0 = simHistLoad().length;
+    const r = origRes.apply(this, arguments);
+    try{ if(!wasReview && simHistLoad().length>n0) toast('✅ Simulado salvo no histórico (Simulado › Seus resultados › Rever).'); }catch(e){}
+    return r;
+  };
+}
+window.CT_HISTGUARD={exportSims, idbGet};
 })();
 
 </script>
