@@ -462,6 +462,7 @@ table.cmp td.sub small{ display:block; font-weight:400; color:var(--bone-dim); f
   <button data-track="PCPE" title="Polícia Civil de PE (Agente/Escrivão/Delegado) — CEBRASPE · Edital publicado em 02/10/2026 · Prova prevista para 07/03/2027">PCPE</button>
   <button data-track="PMPE" title="Polícia Militar de PE (Soldado/Oficial) — Instituto AOCP · Edital publicado em 29/09/2026 · Prova em 21/02/2027">PMPE</button>
   <button data-track="GCMNF" title="Guarda Municipal de Nísia Floresta/RN — IDIB · Prova em 06/12/2026">GCM-Nísia Floresta</button>
+  <button data-track="GCMNT" title="Guarda Civil Municipal de Natal/RN — sem edital ainda · conteúdo do curso CTCom">GCM-Natal</button>
   <button data-track="GCMTG" title="Guarda Municipal de Tangará/RN — COMPERVE/UFRN · Prova em 29/11/2026">GCM-Tangará</button>
   <button data-track="ATGB" title="Agente de Trânsito de Guarabira/PB — CPCON/UEPB · Prova em 18/10/2026">AT-Guarabira</button>
   <button data-track="PRF" title="Polícia Rodoviária Federal — edital ainda não publicado (CEBRASPE provável)">PRF</button>
@@ -1432,6 +1433,7 @@ const EDITAL_ATGB = [
   }
 ];
 
+const EDITAL_GCMNT = [{"materia": "Aviso — Fonte do Conteúdo", "hasQuiz": false, "topicos": ["📌 Concurso da Guarda Civil Municipal de Natal/RN ainda SEM edital e sem banca definida. Esta aba é organizada pelos módulos do curso CTCom: cada material enviado vira um bloco aqui, com questões resolvidas e comentadas.", "🔁 Tudo o que é comum às guardas (Lei 13.022/2014, CF, Direitos Humanos, Penal, Legislação Extravagante) também aparece na trilha GCM-Nísia Floresta."]}, {"materia": "Legislação Extravagante (curso CTCom)", "hasQuiz": true, "quizSubject": "Legislação Extravagante — GCM (CTCom)", "topicos": ["⏳ Aguardando a lista de legislação extravagante do curso. As questões entram aqui assim que você enviar."]}, {"materia": "Legislação Específica das Guardas (Lei 13.022/2014 e CF, art. 144, §8º)", "hasQuiz": true, "quizSubject": "Legislação Específica — Guarda Municipal", "topicos": ["Estatuto Geral das Guardas Municipais (Lei 13.022/2014)", "CF, art. 144, §8º", "Uso de instrumentos de menor potencial ofensivo (Lei 13.060/2014)"]}, {"materia": "Grupos vulneráveis", "hasQuiz": true, "quizSubject": "Legislação Extravagante — Grupos Vulneráveis", "topicos": ["ECA, Estatuto da Pessoa Idosa, Lei Maria da Penha, Estatuto da Pessoa com Deficiência, Lei 7.716/1989"]}, {"materia": "Direito Constitucional", "hasQuiz": true, "quizSubject": "Direito Constitucional", "topicos": ["Direitos e garantias fundamentais", "Segurança pública (art. 144)"]}, {"materia": "Direito Administrativo", "hasQuiz": true, "quizSubject": "Direito Administrativo", "topicos": ["Princípios, poderes, atos e responsabilidade do Estado"]}, {"materia": "Direitos Humanos", "hasQuiz": true, "quizSubject": "Direitos Humanos", "topicos": ["Declaração Universal, Pacto de São José, uso da força"]}, {"materia": "Direito Penal", "hasQuiz": true, "quizSubject": "Direito Penal", "topicos": ["Parte geral e crimes mais cobrados"]}, {"materia": "Direito Processual Penal", "hasQuiz": true, "quizSubject": "Direito Processual Penal", "topicos": ["Prisão em flagrante e atuação do guarda"]}, {"materia": "Legislação de Trânsito", "hasQuiz": true, "quizSubject": "Legislação de Trânsito (CTB)", "topicos": ["Código de Trânsito Brasileiro"]}, {"materia": "Língua Portuguesa", "hasQuiz": true, "quizSubject": "Língua Portuguesa", "topicos": ["Interpretação, gramática e reescrita"]}, {"materia": "Raciocínio Lógico-Matemático", "hasQuiz": true, "quizSubject": "Raciocínio Lógico-Matemático", "topicos": ["Lógica e matemática básica"]}, {"materia": "Informática", "hasQuiz": true, "quizSubject": "Informática (Guarda Municipal)", "topicos": ["Windows, Office, internet e segurança"]}, {"materia": "Conhecimentos do RN", "hasQuiz": true, "quizSubject": "Aspectos Geoeconômicos do RN", "topicos": ["Geografia, economia e história do Rio Grande do Norte"]}];
 const EDITAL_GCMNF = [
   {
     materia: "Aviso — Fonte do Conteúdo",
@@ -1657,8 +1659,24 @@ const TRACK_SUBJECTS = {
     "Legislação Extravagante — PMPE",
     "Legislação Extravagante — Grupos Vulneráveis"
   ],
+  GCMNT: [
+    "Legislação Específica — Guarda Municipal",
+    "Legislação Extravagante — GCM (CTCom)",
+    "Legislação Extravagante — Grupos Vulneráveis",
+    "Direito Constitucional",
+    "Direito Administrativo",
+    "Direitos Humanos",
+    "Direito Penal",
+    "Direito Processual Penal",
+    "Legislação de Trânsito (CTB)",
+    "Língua Portuguesa",
+    "Raciocínio Lógico-Matemático",
+    "Informática (Guarda Municipal)",
+    "Aspectos Geoeconômicos do RN"
+  ],
   GCMNF: [
     "Legislação Específica — Guarda Municipal",
+    "Legislação Extravagante — GCM (CTCom)",
     "Língua Portuguesa",
     "Raciocínio Lógico-Matemático",
     "Informática (Guarda Municipal)",
@@ -1749,6 +1767,7 @@ const TRACK_LABELS = {
   PF: { eyebrow: "🎯 Objetivo principal · Edital esperado para 2027 (CEBRASPE)", title: "Central Tática — Polícia Federal" },
   ATGB: { eyebrow: "Unidade de Estudos Táticos · Prova em 18/10/2026 (CPCON/UEPB)", title: "Central Tática — Agente de Trânsito de Guarabira/PB" },
   GCMNF: { eyebrow: "Unidade de Estudos Táticos · Prova em 06/12/2026 (IDIB)", title: "Central Tática — Guarda Municipal de Nísia Floresta/RN" },
+  GCMNT: { eyebrow: "Unidade de Estudos Táticos · Sem edital ainda · Curso CTCom", title: "Central Tática — Guarda Civil Municipal de Natal/RN" },
   GCMTG: { eyebrow: "Unidade de Estudos Táticos · Prova em 29/11/2026 (COMPERVE/UFRN)", title: "Central Tática — Guarda Municipal de Tangará/RN" },
   GCMCZ: { eyebrow: "Unidade de Estudos Táticos · Prova em 29/11/2026 (IDIB)", title: "Central Tática — Guarda Municipal de Cruzeta/RN" }
 };
@@ -1760,6 +1779,7 @@ function currentEdital(){
   if(currentTrack === 'PCPE') return EDITAL_PCPE;
   if(currentTrack === 'PMPE') return EDITAL_PMPE;
   if(currentTrack === 'GCMNF') return EDITAL_GCMNF;
+  if(currentTrack === 'GCMNT') return EDITAL_GCMNT;
   if(currentTrack === 'ATGB') return EDITAL_ATGB;
   if(currentTrack === 'PRF') return EDITAL_PRF;
   if(currentTrack === 'PF') return EDITAL_PF;
@@ -2125,7 +2145,7 @@ function loadProgress(){
   }
   try{
     const rawTrack = localStorage.getItem(LS_TRACK_KEY);
-    currentTrack = ['PPPE','PMAL','GCMNF','GCMTG','PCPE','PMPE','ATGB','PRF','PF'].includes(rawTrack) ? rawTrack : 'ATGB';
+    currentTrack = ['PPPE','PMAL','GCMNF','GCMNT','GCMTG','PCPE','PMPE','ATGB','PRF','PF'].includes(rawTrack) ? rawTrack : 'ATGB';
   } catch(e){
     currentTrack = 'ATGB';
   }
@@ -2172,6 +2192,10 @@ const CONCURSO_INFO = {
     objetiva: "120 itens de CERTO ou ERRADO: 50 de Conhecimentos Básicos + 70 de Específicos", redacao: "Sim · texto dissertativo de até 30 linhas sobre Atualidades, 30 pontos", aprovacao: "Confira no edital (no CEBRASPE, um item errado anula um certo)",
     etapas: "Objetiva + Discursiva → TAF → Avaliação médica → Avaliação psicológica → Investigação social",
     alertas: ["⚠️ Inscrições terminam em 16/10/2026.", "Formato Certo/Errado: não chute sem segurança."] },
+  GCMNT: { nome: "Guarda Civil Municipal de Natal/RN", status: "Sem edital · Comissão Especial Organizadora instituída pela Prefeitura (jan/2026); banca ainda não contratada", banca: "A definir", cargo: "Guarda Civil Municipal (nível médio previsto, a confirmar)", vagas: "Previsão divulgada de 120 a 130 vagas (há articulação na Câmara para chegar a 200); não oficial", salario: "A definir (último edital é de 2006)", inscricoes: "Sem previsão oficial", prova: "Sem data · há fontes que já falam em edital só em 2027",
+    objetiva: "Último concurso (2006): 40 questões · Português, Matemática, Conhecimentos Gerais e Específicos. O novo edital pode mudar tudo.", redacao: "A definir", aprovacao: "A definir",
+    etapas: "No último: Objetiva → TAF → Médica → Psicológica → Investigação social → Curso de formação",
+    alertas: ["Conteúdo organizado pelo curso CTCom enquanto o edital não sai.", "O que serve para Natal serve para Nísia Floresta (prova em 06/12): estude os dois juntos."] },
   GCMNF: { nome: "Guarda Civil Municipal de Nísia Floresta/RN", status: "Edital publicado (Edital 02/2026)", banca: "IDIB", cargo: "Guarda Municipal (nível médio)", vagas: "30 imediatas + 20 de cadastro reserva", salario: "R$ 1.800 + 30% de risco de vida (+ adicional noturno)", inscricoes: "Até 13/10/2026", prova: "06/12/2026, das 8h às 12h",
     objetiva: "60 questões (5 alternativas): Português 18 · Matemática 6 · Informática 6 · Noções de Direito e Legislação 30 (PESO 2)", redacao: "Não tem", aprovacao: "Confira no edital",
     etapas: "Objetiva → TAF e altura (até 10 vezes o número de vagas) → Avaliação psicológica → Saúde → Investigação social → Curso de Formação",
@@ -2222,6 +2246,7 @@ const CORTES = {
         extra:'Eliminação: menos de 10 em Básicos, 21 em Específicos ou 36 no conjunto. Em 2017 (CESPE) o corte foi ≈63% da nota máxima.',
         conf:'cursinho', fontes:[['Direção Concursos','https://www.direcaoconcursos.com.br/noticias/concurso-pm-al-resultado-definitivo'],['Estratégia','https://concursos.estrategia.com/portal/notas-de-corte-da-carreira-policial/']],
         banca:'Atual: Cebraspe (concurso de 2021 retomado).' },
+  GCMNT:{ ultimo:'O último concurso da Guarda de Natal é de 2006; não achei nota de corte divulgada.', linhas:[], escala:'', extra:'', conf:'sem', fontes:[], banca:'A definir.' },
   GCMNF:{ ultimo:'Não achei concurso anterior de Guarda Municipal em Nísia Floresta com nota de corte divulgada.', linhas:[], escala:'', extra:'', conf:'sem', fontes:[], banca:'Atual: IDIB.' },
   GCMTG:{ ultimo:'Não achei concurso anterior de Guarda Municipal em Tangará com nota de corte divulgada.', linhas:[], escala:'', extra:'', conf:'sem', fontes:[], banca:'Atual: COMPERVE/UFRN.' },
   ATGB:{ ultimo:'Não achei concurso anterior de Agente de Trânsito em Guarabira com nota de corte divulgada.', linhas:[], escala:'', extra:'Use as provas reais da CPCON de Cuité e Pombal (na aba Simulado) como parâmetro de nível.', conf:'sem', fontes:[], banca:'Atual: CPCON/UEPB.' }
@@ -2322,7 +2347,7 @@ function renderConcursoInfo(){
 }
 
 function setTrack(track){
-  if(!['PPPE','PMAL','GCMNF','GCMTG','PCPE','PMPE','ATGB','PRF','PF'].includes(track)) return;
+  if(!['PPPE','PMAL','GCMNF','GCMNT','GCMTG','PCPE','PMPE','ATGB','PRF','PF'].includes(track)) return;
   if(currentTrack === track) return;
   currentTrack = track;
   saveTrack();
@@ -2335,6 +2360,7 @@ function setTrack(track){
 const EXAM_DATES = {
   GCMTG: { label: "GCM-Tangará",        date: "2026-11-29", status: null },
   GCMNF: { label: "GCM-Nísia Floresta", date: "2026-12-06", status: null },
+  GCMNT: { label: "GCM-Natal", date: null, status: "Sem edital — comissão formada; previsão de 120 a 130 vagas; banca a definir" },
   ATGB:  { label: "AT-Guarabira",        date: "2026-10-18", status: null },
   PMAL:  { label: "PMAL",               date: "2027-01-17", status: null },
   PPPE:  { label: "PPPE",               date: null, status: "Edital previsto até 10/10/2026 (CEBRASPE, 700 vagas)" },
@@ -2410,6 +2436,7 @@ const THEMES = {
   PCPE:{a:'#D9A441',b:'#F2C76B',d:'#7E5A1E',bg:'#0B0708',card:'#161011',alt:'#1E1517',line:'#33241F',badge:'EDITAL PUBLICADO',tag:'Polícia Civil'},
   PMPE:{a:'#E5484D',b:'#FF7A7E',d:'#7C2427',bg:'#07080C',card:'#121319',alt:'#191B23',line:'#2C2730',badge:'EDITAL PUBLICADO',tag:'Polícia Militar'},
   PMAL:{a:'#F0913A',b:'#FFB46B',d:'#7F4615',bg:'#0A0807',card:'#161211',alt:'#1E1816',line:'#33261E',badge:'PROVA 17/01',tag:'Polícia Militar'},
+  GCMNT:{a:'#2FB67C',b:'#7FE0B4',d:'#17603F',bg:'#060A08',card:'#0F1612',alt:'#151E19',line:'#22332A',badge:'SEM EDITAL',tag:'Guarda Municipal'},
   GCMNF:{a:'#4C8DF6',b:'#8AB6FF',d:'#244A86',bg:'#06080D',card:'#10141C',alt:'#161C27',line:'#232D3E',badge:'PROVA 06/12',tag:'Guarda Municipal'},
   GCMTG:{a:'#3FB6C8',b:'#7FDCEA',d:'#1E5D68',bg:'#07090A',card:'#111617',alt:'#171E20',line:'#25302F',badge:'PROVA 29/11',tag:'Guarda Municipal'},
   ATGB:{a:'#C8E62E',b:'#E4FF6A',d:'#5F6E14',bg:'#08090A',card:'#131512',alt:'#1A1D18',line:'#2B3022',badge:'PROVA 18/10',tag:'Agente de Trânsito'},
@@ -2433,7 +2460,7 @@ const BG_CANDIDATES = {
   ]
 };
 const WM_TEXT = { PPPE:['POLÍCIA PENAL','PERNAMBUCO'], PCPE:['POLÍCIA CIVIL','PERNAMBUCO'], PMPE:['POLÍCIA MILITAR','PERNAMBUCO'], PMAL:['POLÍCIA MILITAR','ALAGOAS'],
-  GCMNF:['GUARDA MUNICIPAL','NÍSIA FLORESTA'], GCMTG:['GUARDA MUNICIPAL','TANGARÁ'], ATGB:['AGENTE DE TRÂNSITO','GUARABIRA'], PRF:['PRF','POLÍCIA RODOVIÁRIA FEDERAL'], PF:['POLÍCIA FEDERAL','BRASIL'] };
+  GCMNF:['GUARDA MUNICIPAL','NÍSIA FLORESTA'], GCMNT:['GUARDA MUNICIPAL','NATAL'], GCMTG:['GUARDA MUNICIPAL','TANGARÁ'], ATGB:['AGENTE DE TRÂNSITO','GUARABIRA'], PRF:['PRF','POLÍCIA RODOVIÁRIA FEDERAL'], PF:['POLÍCIA FEDERAL','BRASIL'] };
 
 // ===== Wallpapers do Projeto Caveira (carregados do site deles; se não abrir, usa o fundo embutido) =====
 const CAV_BASE = 'https://caveira.com/wp-content/uploads/';
@@ -2719,7 +2746,7 @@ function shuffleArr(arr){
 
 // ============ HELPERS DE DADOS — EDITAL ============
 function editalTopicId(materiaIdx, topicIdx, track){ return (track||currentTrack) + ':m' + materiaIdx + '-t' + topicIdx; }
-const ALL_TRACKS = ['PPPE','PMAL','GCMNF','GCMTG','PCPE','PMPE','ATGB','PRF','PF'];
+const ALL_TRACKS = ['PPPE','PMAL','GCMNF','GCMNT','GCMTG','PCPE','PMPE','ATGB','PRF','PF'];
 function migrateEditalKeys(){
   let changed=false;
   Object.keys(editalState).forEach(k=>{ if(/^m\d+-t\d+$/.test(k)){ const v=editalState[k]; ALL_TRACKS.forEach(t=>{ const nk=t+':'+k; if(!(nk in editalState)) editalState[nk]=v; }); delete editalState[k]; changed=true; } });
@@ -3594,8 +3621,8 @@ function renderEstudar(){
 
 
 // ============ COMPARATIVO DE ASSUNTOS ENTRE CONCURSOS ============
-const CMP_TRACKS = ['ATGB','GCMTG','GCMNF','PMAL','PMPE','PCPE','PPPE','PRF','PF'];
-const CMP_LABEL = {ATGB:'AT-Guarabira',GCMTG:'GCM-Tangará',GCMNF:'GCM-Nísia',PMAL:'PMAL',PMPE:'PMPE',PCPE:'PCPE',PPPE:'PPPE',PRF:'PRF',PF:'PF'};
+const CMP_TRACKS = ['ATGB','GCMTG','GCMNF','GCMNT','PMAL','PMPE','PCPE','PPPE','PRF','PF'];
+const CMP_LABEL = {ATGB:'AT-Guarabira',GCMTG:'GCM-Tangará',GCMNF:'GCM-Nísia',GCMNT:'GCM-Natal',PMAL:'PMAL',PMPE:'PMPE',PCPE:'PCPE',PPPE:'PPPE',PRF:'PRF',PF:'PF'};
 const CMP_STATUS = {PPPE:'base 2022', PRF:'base 2021', PF:'previsto'};
 const CMP_CANON = [
   ['Língua Portuguesa', /portugu/i],
@@ -3913,6 +3940,10 @@ const NAMED_SIMULADOS = {
     { name: "💣 HARDCORE PPPE #1 — 30 pegadinhas de LEP (Pacote Anticrime e Lei 14.843/2024), súmulas, crimes funcionais e Regras de Mandela", idPrefix: "hcpppe1-", tempoMin: 75 },
     { name: "⛓️ LEP — Pegadinhas de banca (RDD, faltas, remição, órgãos), nível Cebraspe", idPrefix: "lepcx-", tempoMin: 100 },
     { name: "💀 Caveira — Simulado Nacional Scorpions 2026 (120 itens C/E)", idPrefix: "cav-scorp-", tempoMin: 240 }
+  ],
+  GCMNT: [
+    { name: "💣 HARDCORE GCM #1 — 29 pegadinhas da letra da lei (Lei 13.022, Lei 13.060, CF, DH, Penal, Processo, vulneráveis e CTB)", idPrefix: "hcgcmnf1-", tempoMin: 75 },
+    { name: "💻 Informática prática C/E #1 — 40 itens no estilo “situação do dia a dia”, comentados", idPrefix: "infoce1-", tempoMin: 40 }
   ],
   GCMNF: [
     { name: "💻 Informática prática C/E #1 — 40 itens no estilo “situação do dia a dia” (atalhos, pastas, redes, segurança, e-mail, Office), comentados", idPrefix: "infoce1-", tempoMin: 40 },
@@ -5539,7 +5570,7 @@ window.RED_TEMAS = [
   ]
 },
 {
-  id:'camcorp', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMTG','ATGB'],
+  id:'camcorp', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMNT','GCMTG','ATGB'],
   titulo:'Câmeras corporais na atividade policial',
   fonte:'Tema autoral de atualidades (estilo Cebraspe)',
   maxLinhas:30, minLinhas:20, apresentacao:1.5, total:30, tempoMin:60,
@@ -5558,7 +5589,7 @@ window.RED_TEMAS = [
   ]
 },
 {
-  id:'violmulher', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMTG'],
+  id:'violmulher', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMNT','GCMTG'],
   titulo:'Violência contra a mulher e a atuação das forças de segurança',
   fonte:'Tema autoral de atualidades (estilo Cebraspe)',
   maxLinhas:30, minLinhas:20, apresentacao:1.5, total:30, tempoMin:60,
@@ -5615,7 +5646,7 @@ window.RED_TEMAS = [
   ]
 },
 {
-  id:'saudemental', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMTG','ATGB'],
+  id:'saudemental', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMNT','GCMTG','ATGB'],
   titulo:'Saúde mental dos profissionais de segurança pública',
   fonte:'Tema autoral de atualidades (estilo Cebraspe)',
   maxLinhas:30, minLinhas:20, apresentacao:1.5, total:30, tempoMin:60,
@@ -5634,7 +5665,7 @@ window.RED_TEMAS = [
   ]
 },
 {
-  id:'usoforca', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMTG'],
+  id:'usoforca', real:false, banca:'Treino autoral (modelo Cebraspe)', tracks:['PMAL','PMPE','PCPE','PPPE','GCMNF','GCMNT','GCMTG'],
   titulo:'Uso da força e letalidade policial',
   fonte:'Tema autoral de atualidades (estilo Cebraspe)',
   maxLinhas:30, minLinhas:20, apresentacao:1.5, total:30, tempoMin:60,
