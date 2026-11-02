@@ -4141,6 +4141,14 @@ function renderSimuladoSetup(){
         </p>
 
         <div class="toggle-row">
+          <label for="simSubjSelect">Matéria:</label>
+          <select class="select-native" id="simSubjSelect">
+            <option value="">Todas as matérias (${maxQty})</option>
+            ${trackSubjects().map(s => ({s, n: pool.filter(q => q.subject === s).length})).filter(x => x.n > 0).sort((a,b)=> a.s.localeCompare(b.s,'pt')).map(x => `<option value="${String(x.s).replace(/"/g,'&quot;')}">${x.s} (${x.n})</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="toggle-row">
           <label for="simQtySelect">Quantidade de questões:</label>
           <select class="select-native" id="simQtySelect">
             <option value="20">20</option>
@@ -4187,12 +4195,20 @@ function renderSimuladoSetup(){
       startNamedSimulado(btn.getAttribute('data-named-prefix'), parseInt(btn.getAttribute('data-named-tempo'),10));
     });
   });
+  const simSubjSel = document.getElementById('simSubjSelect');
+  const poolFor = ()=> simSubjSel && simSubjSel.value ? pool.filter(q => q.subject === simSubjSel.value) : pool;
+  if(simSubjSel) simSubjSel.addEventListener('change', ()=>{
+    const n = poolFor().length, all = document.querySelector('#simQtySelect option:last-child');
+    if(all) all.textContent = 'Todas as disponíveis (' + n + ')';
+  });
   document.getElementById('startSimBtn').addEventListener('click', ()=>{
-    const qty = Math.min(parseInt(document.getElementById('simQtySelect').value, 10), pool.length);
+    const subjPool = poolFor();
+    const qty = Math.min(parseInt(document.getElementById('simQtySelect').value, 10), subjPool.length);
     simDurationMin = parseInt(document.getElementById('simTimeSelect').value, 10);
     if(pool.length === 0){ alert('Não há questões disponíveis nessa trilha ainda.'); return; }
-    simOrder = shuffleArr(pool).slice(0, qty).map(q => q.id);
-    simName = 'Simulado aleatório (' + qty + ' questões)';
+    if(subjPool.length === 0){ alert('Não há questões disponíveis nessa matéria ainda.'); return; }
+    simOrder = shuffleArr(subjPool).slice(0, qty).map(q => q.id);
+    simName = (simSubjSel && simSubjSel.value ? 'Simulado de ' + simSubjSel.value : 'Simulado aleatório') + ' (' + qty + ' questões)';
     simIndex = 0;
     simAnswers = {};
     simEndAt = Date.now() + simDurationMin * 60 * 1000;
