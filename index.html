@@ -5825,7 +5825,7 @@ function analyze(text, tema, opt){
     const c = P[last]; const conclCon = c.con.some(x=>x.cat==='Conclusão');
     if(!conclCon) iss('atenção','Estrutura','O último parágrafo não usa conectivo conclusivo (“Portanto”, “Dessa forma”, “Diante do exposto”). Sinalize o fechamento.');
     else R.struct.push({ok:true,msg:'A conclusão é sinalizada por conectivo conclusivo.'});
-    const novoQ = qs.map((q,j)=>({j, sóNaConcl: c.qHits[j].n>0 && P.slice(0,last).every(p=>p.qHits[j].n===0)})).filter(x=>x.sóNaConcl);
+    const novoQ = qs.map((q,j)=>({j, sóNaConcl: j<qs.length-1 && c.qHits[j].n>0 && P.slice(0,last).every(p=>p.qHits[j].n===0)})).filter(x=>x.sóNaConcl);
     novoQ.forEach(x=>iss('erro','Estrutura',`O quesito “${qs[x.j].t}” aparece SÓ na conclusão. Conclusão não é lugar de argumento novo, e a banca tende a avaliar esse quesito como superficial.`));
   }
   /* transições entre parágrafos */
@@ -5857,7 +5857,7 @@ function analyze(text, tema, opt){
   R.quesitos = qs.map((q,j)=>{
     const ps = P.map((p,k)=>({k, n:p.qHits[j].n, kw:p.qHits[j].kw, words:p.words, rep:p.rep, con:p.con})).filter(x=>x.n>0);
     const kwAll = [...new Set(ps.flatMap(x=>x.kw))];
-    const dev = ps.filter(x=>x.k>0 && x.k<last || P.length<3);
+    const dev = ps.filter(x=>(x.k>0 && x.k<last) || (j===qs.length-1 && x.k===last && x.k>0) || P.length<3);
     const main = (dev.length?dev:ps).slice().sort((a,b)=>b.n-a.n)[0];
     let nivel = 0;
     if(kwAll.length>=1) nivel=1;
@@ -5912,7 +5912,7 @@ let S = { temaId:null, timer:null, t0:null, last:null };
 function curTrack(){ try{ return currentTrack; }catch(e){ return ''; } }
 function temasOrdenados(){ const tr=curTrack(); return T.slice().sort((a,b)=>(b.tracks.includes(tr)-a.tracks.includes(tr)) || (b.real-a.real)); }
 function tema(){ return T.find(t=>t.id===S.temaId) || temasOrdenados()[0]; }
-function cfg(){ return Object.assign({cpl:70, ne:0}, ld(K_CFG,{})); }
+function cfg(){ const c=Object.assign({cpl:85, ne:0}, ld(K_CFG,{})); if(!c.cplv2){ if(c.cpl===70) c.cpl=85; c.cplv2=1; sv(K_CFG,c); } return c; }
 
 function folha(text, cpl, max){
   const pars=text.replace(/\r/g,'').split(/\n\s*\n|\n/).map(p=>p.trim()).filter(Boolean);
@@ -5956,7 +5956,7 @@ function render(){
       <span id="rdCount" class="rd-pill">0 palavras · 0 linhas</span>
       <span id="rdTimer" class="rd-pill">⏱️ ${t.tempoMin}:00</span>
       <button class="btn" id="rdTimerBtn">Iniciar cronômetro</button>
-      <label class="rd-muted" title="Quantos caracteres cabem em uma linha da sua letra na folha definitiva. Meça no papel: 65 a 75 é o comum.">Caracteres/linha <input id="rdCpl" type="number" min="45" max="110" value="${c.cpl}" class="rd-num"></label>
+      <label class="rd-muted" title="Quantos caracteres cabem em uma linha da SUA letra na folha definitiva. Conte uma linha escrita à mão (letras, espaços e pontuação). Letra pequena: 80 a 90; média: 70 a 80.">Caracteres/linha <input id="rdCpl" type="number" min="45" max="110" value="${c.cpl}" class="rd-num"></label>
     </div>
     <textarea id="rdTxt" class="rd-ta" placeholder="Digite sua redação. Separe os parágrafos com uma linha em branco (ou Enter)." spellcheck="false">${esc(txt)}</textarea>
     <div class="rd-toolbar">
