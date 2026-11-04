@@ -2537,7 +2537,7 @@ const HERO_IMG = {"PCPE": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2w
 const HERO_META = {"PCPE": {"baked": true, "light": false}, "PMPE": {"baked": true, "light": false}, "PMAL": {"baked": true, "light": true}, "ATGB": {"baked": false, "light": false}, "GCMNF": {"baked": true, "light": false}, "GCMTG": {"baked": false, "light": false}, "PRF": {"baked": false, "light": false}, "PPPE": {"baked": false, "light": false}, "PF": {"baked": false, "light": false}};
 const TORN = 'url("data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 14" preserveAspectRatio="none"><path d="M0,0 H420 V6 L408,11 L396,5 L384,12 L369,6 L357,10 L344,4 L331,12 L318,7 L304,13 L292,6 L279,10 L266,5 L252,12 L240,7 L226,11 L213,4 L199,12 L187,6 L173,10 L161,5 L147,13 L134,6 L121,11 L108,5 L95,12 L82,7 L68,11 L55,4 L42,12 L29,6 L15,10 L0,5Z" fill="#000"/></svg>')+'")';
 function _hexA(h,a){ const n=parseInt(h.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; }
-function _customBg(track){ try{ return localStorage.getItem('ct_bg_'+track); }catch(e){ return null; } }
+function _customBg(track){ try{ if(window.CT_BGMEM && window.CT_BGMEM[track]) return window.CT_BGMEM[track]; return localStorage.getItem('ct_bg_'+track); }catch(e){ return null; } }
 function applyTheme(track){
   const t = THEMES[track] || THEMES.PF, r = document.documentElement.style;
   r.setProperty('--gold', t.a); r.setProperty('--gold-bright', t.b); r.setProperty('--gold-dim', t.d);
@@ -2581,11 +2581,11 @@ function openBgGallery(){
    <div class="bg-row"><button class="btn" type="button" id="bgUp">📷 Enviar foto do aparelho</button><button class="btn" type="button" id="bgNone">Sem foto (só cores)</button><button class="btn" type="button" id="bgClose" style="margin-left:auto">Fechar</button></div></div>`;
   document.body.appendChild(m);
   m.querySelectorAll('.bg-grid img').forEach(im=>im.addEventListener('error',()=>im.closest('button').remove()));
-  const setUrl=u=>{ try{ localStorage.removeItem('ct_bg_'+currentTrack); if(u) localStorage.setItem('ct_bgurl_'+currentTrack,u); else localStorage.removeItem('ct_bgurl_'+currentTrack); }catch(e){} applyTheme(currentTrack); m.remove(); };
+  const setUrl=u=>{ try{ localStorage.removeItem('ct_bg_'+currentTrack); if(window.CT_BGDEL) window.CT_BGDEL(currentTrack); if(u) localStorage.setItem('ct_bgurl_'+currentTrack,u); else localStorage.removeItem('ct_bgurl_'+currentTrack); }catch(e){} applyTheme(currentTrack); m.remove(); };
   m.querySelectorAll('[data-bgpick]').forEach(b=>b.addEventListener('click',()=>setUrl(b.getAttribute('data-bgpick'))));
   m.querySelector('#bgUrlOk').addEventListener('click',()=>{ const u=m.querySelector('#bgUrlIn').value.trim(); if(/^https?:\/\//i.test(u)) setUrl(u); else m.querySelector('#bgUrlIn').focus(); });
   m.querySelector('#bgUp').addEventListener('click',()=>document.getElementById('themeImgFile').click());
-  m.querySelector('#bgNone').addEventListener('click',()=>{ try{ localStorage.removeItem('ct_bg_'+currentTrack); localStorage.setItem('ct_bgurl_'+currentTrack,'none:'); }catch(e){} applyTheme(currentTrack); m.remove(); });
+  m.querySelector('#bgNone').addEventListener('click',()=>{ try{ localStorage.removeItem('ct_bg_'+currentTrack); if(window.CT_BGDEL) window.CT_BGDEL(currentTrack); localStorage.setItem('ct_bgurl_'+currentTrack,'none:'); }catch(e){} applyTheme(currentTrack); m.remove(); });
   m.querySelector('#bgClose').addEventListener('click',()=>m.remove());
   m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
 }
@@ -2593,7 +2593,7 @@ function openBgGallery(){
   const btn=document.getElementById('themeImgBtn'), inp=document.getElementById('themeImgFile'), rs=document.getElementById('themeImgReset');
   if(!btn) return;
   btn.addEventListener('click', ()=>openBgGallery());
-  rs.addEventListener('click', ()=>{ try{ localStorage.removeItem('ct_bg_'+currentTrack); localStorage.removeItem('ct_bgurl_'+currentTrack); }catch(e){} applyTheme(currentTrack); });
+  rs.addEventListener('click', ()=>{ try{ localStorage.removeItem('ct_bg_'+currentTrack); if(window.CT_BGDEL) window.CT_BGDEL(currentTrack); localStorage.removeItem('ct_bgurl_'+currentTrack); }catch(e){} applyTheme(currentTrack); });
   inp.addEventListener('change', ()=>{
     const f=inp.files&&inp.files[0]; if(!f) return;
     const fr=new FileReader();
@@ -2601,7 +2601,7 @@ function openBgGallery(){
       const k=Math.min(1,1400/im.width), c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k);
       c.getContext('2d').drawImage(im,0,0,c.width,c.height);
       const data=c.toDataURL('image/jpeg',.72);
-      try{ localStorage.removeItem('ct_bgurl_'+currentTrack); localStorage.setItem('ct_bg_'+currentTrack, data); }catch(e){ alert('Não foi possível salvar a imagem (armazenamento do navegador cheio). Tente uma foto menor.'); return; }
+      try{ localStorage.removeItem('ct_bgurl_'+currentTrack); if(window.CT_BGSAVE) window.CT_BGSAVE(currentTrack, data); else localStorage.setItem('ct_bg_'+currentTrack, data); }catch(e){ alert('Não foi possível salvar a imagem (armazenamento do navegador cheio). Tente uma foto menor.'); return; }
       applyTheme(currentTrack); const m=document.getElementById('bgModal'); if(m) m.remove(); };
       im.src=fr.result; };
     fr.readAsDataURL(f); inp.value='';
@@ -6316,6 +6316,59 @@ if(typeof origRes==='function'){
 window.CT_HISTGUARD={exportSims, idbGet};
 })();
 
+
+/* ===== Proteção do progresso das questões e do espaço do navegador ===== */
+(function(){
+'use strict';
+const KP='pcal_quiz_progress_v1';
+let DB=null;
+function idb(){ return new Promise(res=>{ try{ if(DB) return res(DB); const r=indexedDB.open('central_tatica',1); r.onupgradeneeded=()=>{ try{ r.result.createObjectStore('kv'); }catch(e){} }; r.onsuccess=()=>{ DB=r.result; res(DB); }; r.onerror=()=>res(null); r.onblocked=()=>res(null); }catch(e){ res(null); } }); }
+function get(k){ return idb().then(db=>new Promise(res=>{ if(!db) return res(null); try{ const q=db.transaction('kv','readonly').objectStore('kv').get(k); q.onsuccess=()=>res(q.result==null?null:q.result); q.onerror=()=>res(null); }catch(e){ res(null); } })); }
+function set(k,v){ return idb().then(db=>new Promise(res=>{ if(!db) return res(false); try{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=()=>res(true); t.onerror=()=>res(false); }catch(e){ res(false); } })); }
+function del(k){ return idb().then(db=>{ try{ if(db) db.transaction('kv','readwrite').objectStore('kv').delete(k); }catch(e){} }); }
+let warned=false;
+function toast(msg,err){ try{ const d=document.createElement('div'); d.textContent=msg; d.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:92vw;z-index:99999;padding:10px 14px;border-radius:12px;font:600 13px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.45);'+(err?'background:#7f1d1d;color:#fff':'background:#D4AF37;color:#111'); document.body.appendChild(d); setTimeout(()=>d.remove(), err?8000:3500); }catch(e){} }
+
+// 1) Imagens de fundo saem do localStorage (ocupavam o espaço que o progresso precisa)
+window.CT_BGMEM = window.CT_BGMEM || {};
+window.CT_BGSAVE = function(track, data){ window.CT_BGMEM[track]=data; set('bg_'+track, data); try{ localStorage.removeItem('ct_bg_'+track); }catch(e){} };
+window.CT_BGDEL = function(track){ delete window.CT_BGMEM[track]; del('bg_'+track); };
+function migrateBgs(){
+  const ks=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^ct_bg_/.test(k)) ks.push(k); } }catch(e){}
+  return Promise.all(ks.map(k=>{ const v=localStorage.getItem(k); const t=k.slice(6); window.CT_BGMEM[t]=v; return set('bg_'+t, v).then(ok=>{ if(ok){ try{ localStorage.removeItem(k); }catch(e){} } }); })).then(()=>ks.length);
+}
+function loadBgs(){
+  const tracks=(typeof ALL_TRACKS!=='undefined'?ALL_TRACKS:[]);
+  return Promise.all(tracks.map(t=>get('bg_'+t).then(v=>{ if(v) window.CT_BGMEM[t]=v; })));
+}
+
+// 2) Progresso das questões: grava no localStorage E no banco interno; avisa se falhar
+function lsProgress(){ try{ return JSON.parse(localStorage.getItem(KP)||'{}'); }catch(e){ return {}; } }
+function newer(a,b){ return String((a&&a.lastAt)||'') >= String((b&&b.lastAt)||''); }
+const origSave = window.saveProgress;
+window.saveProgress = saveProgress = function(){
+  let ok=true;
+  try{ localStorage.setItem(KP, JSON.stringify(progress)); }catch(e){ ok=false; }
+  if(!ok){
+    // tenta liberar espaço e gravar de novo
+    migrateBgs().then(()=>{ try{ localStorage.setItem(KP, JSON.stringify(progress)); }catch(e){
+      if(!warned){ warned=true; toast('⚠️ O navegador está sem espaço para gravar suas respostas no armazenamento principal. Elas foram guardadas no banco interno do navegador. Veja Simulado › Onde estão seus simulados.', true); } } });
+  }
+  set(KP, JSON.parse(JSON.stringify(progress||{})));
+  try{ if(typeof pushToCloudDebounced==='function') pushToCloudDebounced(); }catch(e){}
+};
+// Ao abrir: soma o que estiver no banco interno com o localStorage (vale a resposta mais recente)
+Promise.all([migrateBgs(), loadBgs(), get(KP)]).then(([nbg,_,saved])=>{
+  try{ if(nbg || Object.keys(window.CT_BGMEM).length){ if(typeof applyTheme==='function') applyTheme(currentTrack); } }catch(e){}
+  try{
+    saved = saved || {}; let rec=0;
+    Object.keys(saved).forEach(id=>{ const s=saved[id], l=progress[id]; if(!l){ progress[id]=s; rec++; } else if(!newer(l,s)){ progress[id]=s; } });
+    if(rec){ try{ localStorage.setItem(KP, JSON.stringify(progress)); }catch(e){} toast(`💾 ${rec} resposta(s) de questões recuperada(s) do banco interno do navegador.`); try{ if(currentView==='dashboard') renderDashboard(); }catch(e){} }
+    set(KP, JSON.parse(JSON.stringify(progress||{})));
+  }catch(e){ console.error(e); }
+});
+window.CT_STOREGUARD={get,set,migrateBgs};
+})();
 </script>
 <script id="redcoringa">
 (function(){
