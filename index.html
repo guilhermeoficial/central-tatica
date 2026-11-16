@@ -1709,6 +1709,11 @@ let simIndex = 0;
 let simAnswers = {};       // { [questionId]: letra escolhida }
 let simEndAt = 0;          // timestamp (ms) de quando o tempo acaba
 let simTimerHandle = null;
+let simPausedAt = 0, simPausedMs = 0, simPauses = 0;   // pausa: instante em que pausou, total pausado e número de pausas
+function simResetPause(){ simPausedAt = 0; simPausedMs = 0; simPauses = 0; }
+function simPause(){ if(simPausedAt || !simEndAt) return; simPausedAt = Date.now(); simPauses++; saveSimState(); }
+function simResume(){ if(!simPausedAt) return; const d = Date.now() - simPausedAt; simEndAt += d; simPausedMs += d; simPausedAt = 0; saveSimState(); }
+function simRemain(){ return simEndAt - (simPausedAt || Date.now()); }
 let simFinishArmed = false;
 let simName = '';
 let simIsReview = false;
@@ -1716,7 +1721,7 @@ const LS_SIM_HIST_KEY = 'ct_sim_historico';   // confirmação em 2 toques (sem 
 const LS_SIM_KEY = 'ct_sim_em_andamento';
 const LS_SIM_LAST_KEY = 'ct_sim_ultimo_resultado';
 function saveSimState(){
-  try{ localStorage.setItem(LS_SIM_KEY, JSON.stringify({ track: currentTrack, simName, simOrder, simAnswers, simIndex, simEndAt, simDurationMin })); }catch(e){}
+  try{ localStorage.setItem(LS_SIM_KEY, JSON.stringify({ track: currentTrack, simName, simOrder, simAnswers, simIndex, simEndAt, simDurationMin, simPausedAt, simPausedMs, simPauses })); }catch(e){}
 }
 function loadSimState(){
   try{ const r = localStorage.getItem(LS_SIM_KEY); return r ? JSON.parse(r) : null; }catch(e){ return null; }
@@ -1755,7 +1760,7 @@ function openSimHistReview(id){
   simOrder = h.order.filter(q => !!findQuestion(q)); simAnswers = h.ans || {}; simIndex = 0;
   simName = h.name; simDurationMin = h.durMin || 0;
   const usedMs = h.timeMs != null ? h.timeMs : 0;
-  simEndAt = Date.now() + Math.max(0, simDurationMin*60*1000 - usedMs);
+  simEndAt = Date.now() + Math.max(0, simDurationMin*60*1000 - usedMs); simResetPause();
   simReviewMeta = h; simIsReview = true; renderSimuladoResults();
 }
 let simReviewMeta = null;
@@ -1779,13 +1784,14 @@ function startErrorBookSimulado(ids){
   simOrder = ids.slice(); simIndex = 0; simAnswers = {};
   simName = '📕 Refazer meus erros dos simulados (' + ids.length + ' questões)';
   simDurationMin = Math.max(10, Math.round(ids.length * 3));
-  simEndAt = Date.now() + simDurationMin*60*1000;
+  simEndAt = Date.now() + simDurationMin*60*1000; simResetPause();
   renderSimuladoQuestion();
 }
 
 function restoreSimState(st){
   simOrder = st.simOrder.filter(id => !!findQuestion(id)); simAnswers = st.simAnswers || {};
   simIndex = Math.min(st.simIndex || 0, simOrder.length-1); simEndAt = st.simEndAt; simDurationMin = st.simDurationMin; simName = st.simName || 'Simulado';
+  simPausedAt = st.simPausedAt || 0; simPausedMs = st.simPausedMs || 0; simPauses = st.simPauses || 0;
 }
 let simDurationMin = 0;
 
@@ -3959,7 +3965,7 @@ function startNamedSimulado(idPrefix, tempoMin){
   simAnswers = {};
   simName = ((NAMED_SIMULADOS[currentTrack]||[]).find(s => s.idPrefix === idPrefix) || {}).name || 'Simulado';
   simDurationMin = tempoMin;
-  simEndAt = Date.now() + simDurationMin * 60 * 1000;
+  simEndAt = Date.now() + simDurationMin * 60 * 1000; simResetPause();
   renderSimuladoQuestion();
 }
 
@@ -4001,10 +4007,10 @@ function renderSimuladoSetup(){
         <h2 class="section-title">Você tem um simulado não finalizado</h2>
         <p style="color:var(--bone-dim); font-size:13px; line-height:1.6; margin:8px 0 12px;">
           ${Object.keys(emAndamento.simAnswers||{}).length} de ${emAndamento.simOrder.length} questões respondidas.
-          ${emAndamento.simEndAt - Date.now() > 0 ? 'Tempo restante: ' + fmtSimTime(emAndamento.simEndAt - Date.now()) + '.' : 'O tempo já se esgotou: finalize para ver sua nota.'}
+          ${(()=>{ const rem = emAndamento.simEndAt - (emAndamento.simPausedAt || Date.now()); return rem > 0 ? (emAndamento.simPausedAt ? '⏸️ <b>Pausado</b> desde ' + new Date(emAndamento.simPausedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + '. O relógio está parado em ' : 'Tempo restante: ') + fmtSimTime(rem) + '.' : 'O tempo já se esgotou: finalize para ver sua nota.'; })()}
         </p>
         <div class="btn-row">
-          ${emAndamento.simEndAt - Date.now() > 0 ? '<button class="btn" id="resumeSimBtn">Continuar</button>' : ''}
+          ${(emAndamento.simEndAt - (emAndamento.simPausedAt || Date.now())) > 0 ? '<button class="btn" id="resumeSimBtn">' + (emAndamento.simPausedAt ? '▶️ Retomar' : 'Continuar') + '</button>' : ''}
           <button class="btn primary" id="finishSavedSimBtn">Finalizar e ver nota</button>
         </div>
       </div>
@@ -4090,7 +4096,7 @@ function renderSimuladoSetup(){
 
   document.getElementById('backBtnSim').addEventListener('click', renderDashboard);
   const resumeBtn = document.getElementById('resumeSimBtn');
-  if(resumeBtn) resumeBtn.addEventListener('click', ()=>{ restoreSimState(emAndamento); renderSimuladoQuestion(); });
+  if(resumeBtn) resumeBtn.addEventListener('click', ()=>{ restoreSimState(emAndamento); simResume(); renderSimuladoQuestion(); });
   const finishSavedBtn = document.getElementById('finishSavedSimBtn');
   if(finishSavedBtn) finishSavedBtn.addEventListener('click', ()=>{ restoreSimState(emAndamento); renderSimuladoResults(); });
   const lastBtn = document.getElementById('lastSimBtn');
@@ -4111,7 +4117,7 @@ function renderSimuladoSetup(){
     simName = 'Simulado aleatório (' + qty + ' questões)';
     simIndex = 0;
     simAnswers = {};
-    simEndAt = Date.now() + simDurationMin * 60 * 1000;
+    simEndAt = Date.now() + simDurationMin * 60 * 1000; simResetPause();
     renderSimuladoQuestion();
   });
 }
@@ -4120,7 +4126,10 @@ function startSimTimer(){
   clearInterval(simTimerHandle);
   simTimerHandle = setInterval(()=>{
     const el = document.getElementById('simTimer');
-    const remain = simEndAt - Date.now();
+    // saiu da tela do simulado sem finalizar: pausa sozinho
+    if(!simPausedAt && currentView !== 'simulado-run'){ simPause(); clearInterval(simTimerHandle); return; }
+    const remain = simRemain();
+    if(simPausedAt){ if(el) el.textContent = fmtSimTime(remain); const pe = document.getElementById('simPauseFor'); if(pe) pe.textContent = fmtSimTime(Date.now() - simPausedAt); return; }
     if(remain <= 0){
       clearInterval(simTimerHandle);
       renderSimuladoResults();
@@ -4129,6 +4138,10 @@ function startSimTimer(){
     if(el) el.textContent = fmtSimTime(remain);
   }, 1000);
 }
+
+// Sair do app, trocar de aba ou fechar o site no meio do simulado: pausa sozinho (ao voltar, toque em Retomar)
+document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState==='hidden' && currentView==='simulado-run' && !simPausedAt){ simPause(); } else if(document.visibilityState==='visible' && currentView==='simulado-run' && simPausedAt){ renderSimuladoQuestion(); } }catch(e){} });
+window.addEventListener('pagehide', ()=>{ try{ if(currentView==='simulado-run' && !simPausedAt) simPause(); }catch(e){} });
 
 function fmtSimTime(ms){
   const totalSec = Math.max(0, Math.floor(ms/1000));
@@ -4171,11 +4184,19 @@ function renderSimuladoQuestion(){
     <div class="index-strip">${indexStripHTML}</div>
     <div class="score-bar">
       <span>Questão <strong>${simIndex+1}</strong> / ${simOrder.length}</span>
-      <span class="pill" id="simTimer" style="font-family:'IBM Plex Mono',monospace; font-weight:700;">${fmtSimTime(simEndAt - Date.now())}</span>
+      <span class="pill" id="simTimer" style="font-family:'IBM Plex Mono',monospace; font-weight:700; white-space:nowrap;">${fmtSimTime(simRemain())}</span>
+      <button class="btn" id="simPauseBtn" title="${simPausedAt ? 'Retomar' : 'Pausar'}" aria-label="${simPausedAt ? 'Retomar' : 'Pausar'}" style="padding:6px 10px; font-size:15px; line-height:1;">${simPausedAt ? '▶️' : '⏸️'}</button>
       <span class="pill">Respondidas: <strong>${answeredCount}</strong> / ${simOrder.length}</span>
       <button class="btn primary" id="simFinishTopBtn" style="padding:6px 12px; font-size:12px;">✅ Finalizei, ver nota</button>
     </div>
-    <div class="card">
+    ${simPausedAt ? `<div class="card" style="border-color:var(--gold);"><div class="card-pad" style="text-align:center;padding:34px 18px;">
+      <div style="font-size:42px;line-height:1">⏸️</div>
+      <h2 class="section-title" style="margin:10px 0 6px;">Simulado pausado</h2>
+      <p style="color:var(--bone-dim); font-size:13.5px; line-height:1.6; margin:0 0 6px;">O relógio parou em <b style="color:var(--bone)">${fmtSimTime(simRemain())}</b>. Pausado há <b id="simPauseFor" style="color:var(--bone)">${fmtSimTime(Date.now()-simPausedAt)}</b>.</p>
+      <p style="color:var(--bone-dim); font-size:12px; line-height:1.6; margin:0 0 14px;">A questão fica escondida durante a pausa. Pode fechar o site: ao voltar, ele continua pausado (Simulado › Retomar).${simPauses>1 ? ` Pausas neste simulado: ${simPauses}.` : ''}</p>
+      <button class="btn primary" id="simResumeBig" style="font-size:15px; padding:12px 26px;">▶️ Retomar simulado</button>
+    </div></div>` : ''}
+    <div class="card" ${simPausedAt ? 'style="display:none"' : ''}>
       <div class="card-tab">
         <span class="proc">${item.subject} · ${item.ref}</span>
         <span class="qnum">Item ${simIndex+1}</span>
@@ -4197,8 +4218,14 @@ function renderSimuladoQuestion(){
   simFinishArmed = false;
   startSimTimer();
 
+  const pauseBtn = document.getElementById('simPauseBtn');
+  if(pauseBtn) pauseBtn.addEventListener('click', ()=>{ if(simPausedAt) simResume(); else simPause(); renderSimuladoQuestion(); });
+  const resumeBig = document.getElementById('simResumeBig');
+  if(resumeBig) resumeBig.addEventListener('click', ()=>{ simResume(); renderSimuladoQuestion(); });
+  if(simPausedAt){ app.querySelectorAll('.sim-tick, #simPrevBtn, #simNextBtn').forEach(el=>{ el.style.pointerEvents='none'; el.style.opacity='.35'; }); }
   app.querySelectorAll('.btn-answer').forEach(btn=>{
     btn.addEventListener('click', ()=>{
+      if(simPausedAt) return;
       simAnswers[id] = btn.getAttribute('data-choice');
       renderSimuladoQuestion();
     });
@@ -4226,6 +4253,7 @@ function renderSimuladoQuestion(){
 function renderSimuladoResults(){
   currentView = 'simulado-results';
   clearInterval(simTimerHandle);
+  if(simPausedAt && !simIsReview){ simResume(); }
   const review = simIsReview; simIsReview = false;
   const reviewMeta = simReviewMeta; simReviewMeta = null;
 
@@ -4253,7 +4281,7 @@ function renderSimuladoResults(){
     try{
       const hist = simHistLoad();
       const nowIso = new Date().toISOString();
-      hist.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), track: currentTrack, name: simName || 'Simulado', at: nowIso, correct, wrong, blank, total, pct, time: timeUsedStr, timeMs: Math.max(0,timeUsedMs), durMin: simDurationMin, order: simOrder.slice(), ans: Object.assign({}, simAnswers) });
+      hist.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), track: currentTrack, name: simName || 'Simulado', at: nowIso, correct, wrong, blank, total, pct, time: timeUsedStr, timeMs: Math.max(0,timeUsedMs), durMin: simDurationMin, pauses: simPauses, pausedMs: simPausedMs, order: simOrder.slice(), ans: Object.assign({}, simAnswers) });
       simHistSave(hist);
       localStorage.setItem(LS_SIM_LAST_KEY, JSON.stringify({ track: currentTrack, simName, simOrder, simAnswers, simEndAt, simDurationMin, finishedAt: Date.now() }));
     }catch(e){}
@@ -4302,7 +4330,7 @@ function renderSimuladoResults(){
           <div class="stat-box"><div class="num" style="color:#e05656">${wrong}</div><div class="lbl">Erros</div></div>
           <div class="stat-box"><div class="num" style="color:#c9a227">${blank}</div><div class="lbl">Em branco</div></div>
         </div>
-        <p style="color:var(--bone-dim); font-size:13px;">Tempo utilizado: ${timeUsedStr} de ${simDurationMin} min.${reviewMeta ? ' Feito em ' + new Date(reviewMeta.at).toLocaleString('pt-BR') + ' (revisão do histórico).' : ''}${review ? '' : ' ✅ Simulado salvo no histórico (com todas as suas respostas) e no caderno de erros.'}</p>
+        <p style="color:var(--bone-dim); font-size:13px;">Tempo utilizado: ${timeUsedStr} de ${simDurationMin} min${(!review && simPauses) ? ` (sem contar ${simPauses} pausa${simPauses>1?'s':''}, total de ${fmtSimTime(simPausedMs)})` : (reviewMeta && reviewMeta.pauses ? ` (sem contar ${reviewMeta.pauses} pausa${reviewMeta.pauses>1?'s':''})` : '')}.${reviewMeta ? ' Feito em ' + new Date(reviewMeta.at).toLocaleString('pt-BR') + ' (revisão do histórico).' : ''}${review ? '' : ' ✅ Simulado salvo no histórico (com todas as suas respostas) e no caderno de erros.'}</p>
       </div>
     </div>
     <div class="card">
